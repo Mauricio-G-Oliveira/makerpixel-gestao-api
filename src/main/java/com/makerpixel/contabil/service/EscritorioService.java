@@ -134,7 +134,7 @@ public class EscritorioService {
         ));
 
         String validadeFormatada = fimTesteSp.format(DATE_FMT);
-        String linkAcesso = "https://mauricio-g-oliveira.github.io/makerpixel-gestao/";
+        String linkAcesso = "https://mauricio-g-oliveira.github.io/makerpixel-central-contabil/";
 
         String instrucaoSenha = pedirTroca
             ? "Senha provisória: " + senhaEfetiva + "\n(No seu primeiro acesso você criará a sua senha pessoal definitiva)"
