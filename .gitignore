@@ -35,3 +35,11 @@ target/
 
 ### Log files ###
 *.log
+
+### Certificates and Secrets ###
+*.pfx
+*.p12
+*.key
+xml-saida/
+*.mp4
+*.aiff
