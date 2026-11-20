@@ -48,6 +48,18 @@ public class Escritorio {
     @Column(name = "max_empresas", nullable = false)
     private Integer maxEmpresas = 20;
 
+    @Column(name = "plano_id", length = 50)
+    private String planoId = "plano-escritorio";
+
+    @Column(name = "limite_armazenamento_gb")
+    private Integer limiteArmazenamentoGb = 20;
+
+    @Column(name = "acesso_ate")
+    private OffsetDateTime acessoAte;
+
+    @Column(name = "observacao")
+    private String observacao;
+
     @Column(name = "suporte_liberado_ate")
     private OffsetDateTime suporteLiberadoAte;
 
@@ -70,6 +82,15 @@ public class Escritorio {
         return OffsetDateTime.now().isAfter(this.testeExpiraEm);
     }
 
+    public boolean isAcessoValido() {
+        if (this.situacao == SituacaoEscritorio.SUSPENSO || this.situacao == SituacaoEscritorio.ENCERRADO) {
+            return false;
+        }
+        OffsetDateTime fim = this.acessoAte != null ? this.acessoAte : this.testeExpiraEm;
+        if (fim == null) return true;
+        return OffsetDateTime.now().isBefore(fim);
+    }
+
     public boolean isSuporteAtivo() {
         if (this.suporteLiberadoAte == null) return false;
         return OffsetDateTime.now().isBefore(this.suporteLiberadoAte);
@@ -81,6 +102,11 @@ public class Escritorio {
             if (m != null && m.equalsIgnoreCase(modulo)) return true;
         }
         return false;
+    }
+
+    public boolean podeUsarModulo(String modulo) {
+        if (!isAcessoValido()) return false;
+        return hasModulo(modulo);
     }
 
     // Getters and Setters
@@ -123,8 +149,35 @@ public class Escritorio {
     public Integer getMaxEmpresas() { return maxEmpresas; }
     public void setMaxEmpresas(Integer maxEmpresas) { this.maxEmpresas = maxEmpresas; }
 
+    public OffsetDateTime getAcessoAte() { return acessoAte; }
+    public void setAcessoAte(OffsetDateTime acessoAte) { this.acessoAte = acessoAte; }
+
+    public String getObservacao() { return observacao; }
+    public void setObservacao(String observacao) { this.observacao = observacao; }
+
     public OffsetDateTime getSuporteLiberadoAte() { return suporteLiberadoAte; }
     public void setSuporteLiberadoAte(OffsetDateTime suporteLiberadoAte) { this.suporteLiberadoAte = suporteLiberadoAte; }
+
+    public String getPlanoId() { return planoId; }
+    public void setPlanoId(String planoId) { this.planoId = planoId; }
+
+    public Integer getLimiteArmazenamentoGb() { return limiteArmazenamentoGb; }
+    public void setLimiteArmazenamentoGb(Integer limiteArmazenamentoGb) { this.limiteArmazenamentoGb = limiteArmazenamentoGb; }
+
+    public boolean checarLimiteUsuarios(int quantidadeAtual) {
+        if (maxUsuarios == null) return true;
+        return quantidadeAtual < maxUsuarios;
+    }
+
+    public boolean checarLimiteEmpresas(int quantidadeAtual) {
+        if (maxEmpresas == null) return true;
+        return quantidadeAtual < maxEmpresas;
+    }
+
+    public boolean checarLimiteArmazenamento(double gbAtual) {
+        if (limiteArmazenamentoGb == null) return true;
+        return gbAtual < limiteArmazenamentoGb;
+    }
 
     public OffsetDateTime getCriadoEm() { return criadoEm; }
     public OffsetDateTime getAtualizadoEm() { return atualizadoEm; }
