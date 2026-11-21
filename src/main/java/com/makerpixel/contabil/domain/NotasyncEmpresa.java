@@ -24,6 +24,12 @@ public class NotasyncEmpresa {
     @Column(name = "ativo", nullable = false)
     private boolean ativo = true;
 
+    @Column(name = "fontes_ativas")
+    private String[] fontesAtivas = new String[]{"sef-sc-nfce"};
+
+    @Column(name = "manifestacao_automatica", nullable = false)
+    private boolean manifestacaoAutomatica = false;
+
     @Column(name = "criado_em", nullable = false)
     private OffsetDateTime criadoEm = OffsetDateTime.now();
 
@@ -96,5 +102,21 @@ public class NotasyncEmpresa {
 
     public void setAtualizadoEm(OffsetDateTime atualizadoEm) {
         this.atualizadoEm = atualizadoEm;
+    }
+
+    public String[] getFontesAtivas() {
+        return fontesAtivas;
+    }
+
+    public void setFontesAtivas(String[] fontesAtivas) {
+        this.fontesAtivas = fontesAtivas;
+    }
+
+    public boolean isManifestacaoAutomatica() {
+        return manifestacaoAutomatica;
+    }
+
+    public void setManifestacaoAutomatica(boolean manifestacaoAutomatica) {
+        this.manifestacaoAutomatica = manifestacaoAutomatica;
     }
 }

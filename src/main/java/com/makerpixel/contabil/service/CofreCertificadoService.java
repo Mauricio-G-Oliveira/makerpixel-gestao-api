@@ -129,19 +129,62 @@ public class CofreCertificadoService {
      * Registra auditoria de uso.
      */
     public CofreCryptoService.CertificadoDecifrado obterParaConsulta(UUID escritorioId, String usuarioLogado, String ipOrigem) {
-        CertificadoCofre cert = certificadoRepository.findByEscritorioIdAndAtivoTrue(escritorioId)
+        // Tenta obter o certificado geral do contador (empresaIdIsNull) ou primeiro ativo
+        CertificadoCofre cert = certificadoRepository.findByEscritorioIdAndEmpresaIdIsNullAndAtivoTrue(escritorioId)
+                .or(() -> certificadoRepository.findByEscritorioIdAndAtivoTrue(escritorioId))
                 .orElseThrow(() -> new IllegalStateException("Nenhum certificado A1 ativo no cofre do escritório."));
 
         try {
             CofreCryptoService.CertificadoDecifrado decifrado = cryptoService.decifrarEnvelope(cert, null);
             registrarAuditoria(escritorioId, cert.getId(), "DECIFRAGEM_CONSULTA", usuarioLogado, true,
-                    "Decifração em memória para execução de consulta na SEF/SC", ipOrigem);
+                    "Decifração em memória para execução de consulta na SEF/SC (Contador)", ipOrigem);
             return decifrado;
         } catch (Exception e) {
             registrarAuditoria(escritorioId, cert.getId(), "DECIFRAGEM_CONSULTA", usuarioLogado, false,
                     "Falha na decifração para consulta: " + e.getMessage(), ipOrigem);
             throw e;
         }
+    }
+
+    /**
+     * Decifra o certificado próprio da empresa cliente para uso no DFe Nacional (NF-e/CT-e).
+     */
+    public CofreCryptoService.CertificadoDecifrado obterParaConsultaEmpresa(UUID escritorioId, UUID empresaId, String usuarioLogado, String ipOrigem) {
+        CertificadoCofre cert = certificadoRepository.findByEscritorioIdAndEmpresaIdAndAtivoTrue(escritorioId, empresaId)
+                .orElseThrow(() -> new IllegalStateException("Certificado digital A1 da empresa cliente não encontrado no cofre."));
+
+        try {
+            CofreCryptoService.CertificadoDecifrado decifrado = cryptoService.decifrarEnvelope(cert, null);
+            registrarAuditoria(escritorioId, cert.getId(), "DECIFRAGEM_CONSULTA", usuarioLogado, true,
+                    "Decifração em memória para consulta DFe Nacional da empresa " + empresaId, ipOrigem);
+            return decifrado;
+        } catch (Exception e) {
+            registrarAuditoria(escritorioId, cert.getId(), "DECIFRAGEM_CONSULTA", usuarioLogado, false,
+                    "Falha na decifração do certificado da empresa: " + e.getMessage(), ipOrigem);
+            throw e;
+        }
+    }
+
+    /**
+     * Upload de certificado A1 vinculado a uma empresa cliente específica.
+     */
+    @Transactional
+    public CertificadoResumoDTO uploadCertificadoEmpresa(
+            UUID escritorioId,
+            UUID empresaId,
+            byte[] pfxBytes,
+            String senha,
+            boolean aceitouTermo,
+            String termoVersao,
+            String usuarioLogado,
+            String ipOrigem
+    ) {
+        CertificadoResumoDTO resumo = uploadCertificado(escritorioId, pfxBytes, senha, aceitouTermo, termoVersao, usuarioLogado, ipOrigem);
+        certificadoRepository.findById(resumo.id()).ifPresent(c -> {
+            c.setEmpresaId(empresaId);
+            certificadoRepository.save(c);
+        });
+        return resumo;
     }
 
     /**

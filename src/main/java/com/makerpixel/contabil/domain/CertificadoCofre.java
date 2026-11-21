@@ -15,6 +15,9 @@ public class CertificadoCofre {
     @Column(name = "escritorio_id", nullable = false)
     private UUID escritorioId;
 
+    @Column(name = "empresa_id")
+    private UUID empresaId;
+
     @Column(name = "titular_mascarado", nullable = false)
     private String titularMascarado;
 
@@ -243,5 +246,13 @@ public class CertificadoCofre {
 
     public void setAtualizadoEm(OffsetDateTime atualizadoEm) {
         this.atualizadoEm = atualizadoEm;
+    }
+
+    public UUID getEmpresaId() {
+        return empresaId;
+    }
+
+    public void setEmpresaId(UUID empresaId) {
+        this.empresaId = empresaId;
     }
 }
