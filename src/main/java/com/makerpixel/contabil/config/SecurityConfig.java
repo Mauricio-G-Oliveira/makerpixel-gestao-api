@@ -35,7 +35,7 @@ public class SecurityConfig {
             .cors(AbstractHttpConfigurer::disable)
             .sessionManagement(s -> s.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
             .authorizeHttpRequests(auth -> auth
-                .requestMatchers("/api/auth/**", "/api/health", "/actuator/**", "/error").permitAll()
+                .requestMatchers("/api/auth/**", "/api/health", "/actuator/**", "/error", "/interno/**").permitAll()
                 .requestMatchers("/api/admin/**").hasRole("ADMIN_PRODUTO")
                 .anyRequest().authenticated()
             )
