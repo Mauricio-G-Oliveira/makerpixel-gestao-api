@@ -10,8 +10,9 @@ Backend RESTful corporativo desenvolvido em **Java 21** e **Spring Boot 3.3.4** 
 - **Framework:** Spring Boot 3.3.4 (Spring Web, Security, Data JPA, Validation)
 - **Segurança:** Spring Security 6 + JWT (jjwt 0.12.6) com senhas criptografadas em BCrypt
 - **Persistência:** Spring Data JPA / Hibernate com PostgreSQL 16
-- **Migrações de Banco:** Flyway (V1 Base, V2 Conciliação, V3 NotaSync NFC-e)
-- **Integrações Externas:**
+- **Migrações de Banco:** Flyway (V1 a V8 — incluindo Cofre Seguro A1, Licenças, Planos e Auditoria IBS/CBS da Reforma Tributária)
+- **Integrações Oficiais:**
+  - Calculadora RTC (Receita Federal / LC 214/2025) via serviço desacoplado
   - BrasilAPI (consulta pública de CNPJ com cache local de 24h)
   - SEF/SC Web Service para Contadores (Boletim Técnico 2026/003, v1.00-1)
 - **Containerização:** Docker e Docker Compose
@@ -25,6 +26,12 @@ Backend RESTful corporativo desenvolvido em **Java 21** e **Spring Boot 3.3.4** 
 - `GET /api/v1/auth/me` — Dados do usuário logado e permissões de acesso.
 - `POST /api/v1/auth/trocar-senha` — Troca de senha provisória ou redefinição.
 - `POST /api/v1/auth/usuarios` — Cadastro de novo usuário do escritório (acesso administrativo).
+
+### Módulo Reforma Tributária — IBS/CBS (`/api/v1/reforma`)
+- `POST /api/v1/reforma/auditar` — Auditoria em lote de itens de NF-e, NFC-e e NFS-e contra as regras oficiais da LC 214/2025 e NT 2025.002.
+- `GET /api/v1/reforma/lotes` — Listagem dos lotes auditados por competência.
+- `GET /api/v1/reforma/lotes/{id}` — Detalhamento do lote com comparativo lado a lado e status de auditoria.
+- `GET /api/v1/reforma/versao-rtc` — Versão ativa do motor da Calculadora RTC.
 
 ### Módulo NotaSync — NFC-e SEF/SC (`/api/v1/notasync`)
 - `POST /api/v1/notasync/lote` — Endpoint receptor de metadados fiscais enviados pelo agente local, autenticado com token do escritório e com **deduplicação estrita pela chave de acesso**.
