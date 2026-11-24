@@ -19,5 +19,7 @@ public interface CertificadoCofreRepository extends JpaRepository<CertificadoCof
 
     List<CertificadoCofre> findByEscritorioId(UUID escritorioId);
 
+    List<CertificadoCofre> findByEscritorioIdAndAtivo(UUID escritorioId, boolean ativo);
+
     List<CertificadoCofre> findAllByAtivoTrue();
 }

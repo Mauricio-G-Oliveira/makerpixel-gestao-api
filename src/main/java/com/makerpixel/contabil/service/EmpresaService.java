@@ -3,11 +3,9 @@ package com.makerpixel.contabil.service;
 import com.makerpixel.contabil.config.TenantContext;
 import com.makerpixel.contabil.domain.Empresa;
 import com.makerpixel.contabil.domain.RegimeTributario;
-import com.makerpixel.contabil.domain.Socio;
 import com.makerpixel.contabil.dto.EmpresaDTOs.*;
 import com.makerpixel.contabil.dto.ReceitaCnpjResponse;
 import com.makerpixel.contabil.repository.EmpresaRepository;
-import com.makerpixel.contabil.repository.SocioRepository;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -22,16 +20,13 @@ import java.util.UUID;
 public class EmpresaService {
 
     private final EmpresaRepository empresaRepository;
-    private final SocioRepository socioRepository;
     private final ReceitaFederalService receitaService;
 
     public EmpresaService(
         EmpresaRepository empresaRepository,
-        SocioRepository socioRepository,
         ReceitaFederalService receitaService
     ) {
         this.empresaRepository = empresaRepository;
-        this.socioRepository = socioRepository;
         this.receitaService = receitaService;
     }
 
@@ -128,18 +123,6 @@ public class EmpresaService {
         }
         empresa.setDataConsultaReceita(OffsetDateTime.now());
 
-        // Sócios do QSA (quando a empresa ainda não tem nenhum cadastrado)
-        if (empresa.getSocios().isEmpty() && receita.getQsa() != null && !receita.getQsa().isEmpty()) {
-            for (var socioQsa : receita.getQsa()) {
-                Socio socio = new Socio();
-                socio.setEmpresa(empresa);
-                socio.setEscritorioId(escritorioId);
-                socio.setNome(socioQsa.getNome());
-                socio.setCpf(socioQsa.getCpfCnpj());
-                empresa.getSocios().add(socio);
-            }
-        }
-
         empresa = empresaRepository.save(empresa);
         return toResponse(empresa);
     }
@@ -163,9 +146,7 @@ public class EmpresaService {
     }
 
     private EmpresaResponse toResponse(Empresa e) {
-        List<SocioDTO> sociosDTO = e.getSocios().stream()
-            .map(s -> new SocioDTO(s.getId(), s.getNome(), s.getCpf(), s.getPercentual(), s.getDataEntrada(), s.getDataSaida()))
-            .toList();
+        List<SocioDTO> sociosDTO = List.of();
 
         return new EmpresaResponse(
             e.getId(),

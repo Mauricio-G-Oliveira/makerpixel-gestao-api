@@ -151,4 +151,48 @@ public class NotasyncNuvemController {
                 .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + chaveLimpa + ".xml\"")
                 .body(xml);
     }
+
+    /**
+     * Download em planilha (CSV estruturado compatível com Excel) de todas as notas do mês da empresa monitorada.
+     */
+    @GetMapping(value = "/empresas/{cnpj}/mes/{anoMes}/excel", produces = "text/csv; charset=UTF-8")
+    public ResponseEntity<byte[]> exportarPlanilhaMes(
+            @PathVariable String cnpj,
+            @PathVariable String anoMes
+    ) {
+        UUID escritorioId = TenantContext.getEscritorioId();
+        String cnpjLimpo = cnpj.replaceAll("\\D", "");
+
+        String[] partes = anoMes.split("-");
+        int ano = Integer.parseInt(partes[0]);
+        int mes = Integer.parseInt(partes[1]);
+        OffsetDateTime inicio = OffsetDateTime.of(ano, mes, 1, 0, 0, 0, 0, java.time.ZoneOffset.UTC);
+        OffsetDateTime fim = inicio.plusMonths(1);
+
+        List<NotasyncDocumento> docs = documentoRepository.findByEscritorioAndCnpjAndPeriodo(escritorioId, cnpjLimpo, inicio, fim);
+
+        StringBuilder sb = new StringBuilder();
+        // BOM UTF-8 para abrir nativamente no Microsoft Excel
+        sb.append("\uFEFF");
+        sb.append("Chave de Acesso;Número;Série;Emissão;CNPJ Emitente;Valor Total;Situação;NSU\n");
+
+        for (NotasyncDocumento d : docs) {
+            sb.append(d.getChaveAcesso()).append(";")
+              .append(d.getNumero() != null ? d.getNumero() : "").append(";")
+              .append(d.getSerie() != null ? d.getSerie() : "").append(";")
+              .append(d.getDataEmissao() != null ? d.getDataEmissao().toString() : "").append(";")
+              .append(d.getCnpjEmitente()).append(";")
+              .append(d.getValorTotal() != null ? d.getValorTotal().toString().replace(".", ",") : "0,00").append(";")
+              .append(d.getSituacao()).append(";")
+              .append(d.getNsu() != null ? d.getNsu() : "").append("\n");
+        }
+
+        byte[] bytes = sb.toString().getBytes(java.nio.charset.StandardCharsets.UTF_8);
+        String filename = "planilha_nfce_" + cnpjLimpo + "_" + anoMes + ".csv";
+
+        return ResponseEntity.ok()
+                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + filename + "\"")
+                .contentType(MediaType.parseMediaType("text/csv; charset=UTF-8"))
+                .body(bytes);
+    }
 }

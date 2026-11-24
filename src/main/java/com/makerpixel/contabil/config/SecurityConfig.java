@@ -32,10 +32,10 @@ public class SecurityConfig {
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         return http
             .csrf(AbstractHttpConfigurer::disable)
-            .cors(AbstractHttpConfigurer::disable)
+            .cors(org.springframework.security.config.Customizer.withDefaults())
             .sessionManagement(s -> s.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
             .authorizeHttpRequests(auth -> auth
-                .requestMatchers("/api/auth/**", "/api/health", "/actuator/**", "/error", "/interno/**").permitAll()
+                .requestMatchers("/health", "/api/health", "/api/auth/**", "/actuator/**", "/error", "/interno/**").permitAll()
                 .requestMatchers("/api/admin/**").hasRole("ADMIN_PRODUTO")
                 .anyRequest().authenticated()
             )

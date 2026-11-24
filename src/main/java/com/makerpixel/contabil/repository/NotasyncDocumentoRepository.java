@@ -35,4 +35,6 @@ public interface NotasyncDocumentoRepository extends JpaRepository<NotasyncDocum
     long countByEscritorioId(UUID escritorioId);
 
     long countByEscritorioIdAndCnpj(UUID escritorioId, String cnpj);
+
+    List<NotasyncDocumento> findTop500ByEscritorioIdOrderByDataEmissaoDesc(UUID escritorioId);
 }

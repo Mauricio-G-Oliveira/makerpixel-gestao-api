@@ -1,6 +1,29 @@
-# Central Contábil API — by MakerPixel
+# Central Contábil API v4.0.0 — MakerPixel
 
-Backend RESTful corporativo desenvolvido em **Java 21** e **Spring Boot 3.3.4** para escritórios de contabilidade, fornecendo autenticação JWT, gestão multi-tenant com PostgreSQL Row Level Security (RLS), buscador automatizado de NFC-e SEF/SC (**NotaSync**), conciliação bancária inteligente, auditoria tributária e controle fiscal.
+Backend RESTful corporativo desenvolvido em **Java 21** e **Spring Boot 3.3.4** para escritórios de contabilidade, fornecendo autenticação JWT, gestão multi-tenant com PostgreSQL Row Level Security (RLS), buscador de DF-e na SEF/SC (**NotaSync**), cofre seguro de certificados A1 (AES-256-GCM), auditoria da Reforma Tributária (IBS/CBS - LC 214/2025), gestão diária de rotinas (**Em Dia**) e conformidade com a LGPD.
+
+---
+
+## 🌐 Links Oficiais
+- **Site Institucional & Apresentação:** [makerpixeltech.com.br](https://makerpixeltech.com.br)
+- **Aplicação Web (SPA):** [app.makerpixeltech.com.br](https://app.makerpixeltech.com.br)
+- **Documentação de Deploy:** [docs/deploy-guia.md](file:///Users/mauricio/Desktop/gestao%20financeira/makerpixel-gestao-api/docs/deploy-guia.md)
+- **Roteiro do Piloto:** [docs/roteiro-piloto.md](file:///Users/mauricio/Desktop/gestao%20financeira/makerpixel-gestao-api/docs/roteiro-piloto.md)
+
+---
+
+## 🚦 Status do Produto (Transparência Operacional)
+
+| Módulo / Recurso | Status | Descrição |
+| :--- | :---: | :--- |
+| **NotaSync Nuvem & Cofre A1** | **Produção** | Upload de certificados A1 (AES-256-GCM), monitoramento de empresas, busca contínua na SEF/SC, download em lote de XMLs (ZIP) e diagnósticos com tradução de erros (ex.: cStat 8002). |
+| **Auditor Reforma Tributária (LC 214/2025)** | **Produção** | Conferência item a item de IBS/CBS, alíquotas de teste de 2026, modal lado a lado com fundamentação legal e integração com a Calculadora RTC. |
+| **DANFSe Nacional (WASM)** | **Produção** | Emissão e visualização de Documento Auxiliar da NFS-e 100% no navegador (zero envio de XML a servidores externos). |
+| **XML → Excel Universal** | **Produção** | Conversor de notas e itens para planilhas XLSX estruturadas, direto no navegador ou via endpoint de streaming da API. |
+| **Em Dia (Rotinas e Obrigações)** | **Piloto** | Geração mensal idempotente de tarefas, modelos customizáveis, diário da empresa e criação de tarefas preventivas automáticas. |
+| **Admin MakerPixel** | **Produção** | Criação de testes de 30 dias, gestão de planos e limites, prorrogações, conversões e suspensão imediata de escritórios. |
+| **Garantias LGPD (Artigos 17 e 18)** | **Produção** | Exportação completa dos dados do escritório em arquivo ZIP estruturado e expurgo definitivo com dupla confirmação do CNPJ. |
+| **Modo Demonstração** | **Demonstração** | Flag `VITE_MODO_DEMO=true` no front para visualização com sementes fictícias em memória sem conexão obrigatória à API. |
 
 ---
 
@@ -8,118 +31,61 @@ Backend RESTful corporativo desenvolvido em **Java 21** e **Spring Boot 3.3.4** 
 
 - **Linguagem:** Java 21 (LTS)
 - **Framework:** Spring Boot 3.3.4 (Spring Web, Security, Data JPA, Validation)
-- **Segurança:** Spring Security 6 + JWT (jjwt 0.12.6) com senhas criptografadas em BCrypt
-- **Persistência:** Spring Data JPA / Hibernate com PostgreSQL 16
-- **Migrações de Banco:** Flyway (V1 a V8 — incluindo Cofre Seguro A1, Licenças, Planos e Auditoria IBS/CBS da Reforma Tributária)
+- **Segurança:** Spring Security 6 + JWT (jjwt 0.12.6), senhas com BCrypt e cofre AES-256-GCM
+- **Persistência:** PostgreSQL 16 gerenciado no Supabase com Flyway Migrations (V1 a V10)
 - **Integrações Oficiais:**
-  - Calculadora RTC (Receita Federal / LC 214/2025) via serviço desacoplado
-  - BrasilAPI (consulta pública de CNPJ com cache local de 24h)
-  - SEF/SC Web Service para Contadores (Boletim Técnico 2026/003, v1.00-1)
-- **Containerização:** Docker e Docker Compose
+  - Calculadora RTC (Receita Federal / LC 214/2025) via microsserviço privado em container Docker
+  - BrasilAPI (consulta pública de CNPJ com cache de 24h)
+  - SEF/SC Web Service para Contadores (Boletim Técnico 2026/003)
+- **Deploy:** Render Web Service (API) e Render Private Service (RTC) via `render.yaml`
 
 ---
 
 ## 📋 Endpoints Principais
 
-### Autenticação & Sessão (`/api/v1/auth`)
-- `POST /api/v1/auth/login` — Autenticação de usuário com email e senha; retorna Bearer Token JWT.
-- `GET /api/v1/auth/me` — Dados do usuário logado e permissões de acesso.
-- `POST /api/v1/auth/trocar-senha` — Troca de senha provisória ou redefinição.
-- `POST /api/v1/auth/usuarios` — Cadastro de novo usuário do escritório (acesso administrativo).
+### Autenticação & Sessão (`/api/auth`)
+- `POST /api/auth/login` — Autenticação de usuário com email e senha; retorna Bearer Token JWT.
+- `GET /api/auth/me` — Dados do usuário logado e permissões de acesso.
+- `POST /api/auth/trocar-senha` — Troca de senha provisória ou redefinição de credencial.
+
+### Módulo NotaSync — DF-e & Cofre A1 (`/api/v1/notasync`, `/api/v1/certificados`)
+- `POST /api/v1/certificados/upload` — Upload multipart de certificado A1 criptografado com termo aceito.
+- `GET /api/v1/certificados/ativo` — Metadados do certificado ativo (CNPJ, validade, titular mascarado).
+- `DELETE /api/v1/certificados/{id}` — Remoção segura do certificado.
+- `GET /api/v1/notasync/empresas` — Lista e gerencia empresas com monitoramento de DF-e ativo.
+- `POST /api/v1/notasync/buscar-agora/{cnpj}` — Disparo manual de busca com controle de rate limit (429).
+- `GET /api/v1/notasync/documentos` — Listagem com filtros por empresa, competência e canceladas.
+- `GET /api/v1/notasync/empresas/{cnpj}/mes/{anoMes}/zip` — Stream de download do ZIP com os XMLs do mês.
+- `GET /api/v1/notasync/empresas/{cnpj}/mes/{anoMes}/excel` — Stream de exportação da planilha XLSX/CSV do mês.
+- `GET /api/v1/notasync/execucoes` — Histórico de consultas com cStat traduzido e diagnóstico.
 
 ### Módulo Reforma Tributária — IBS/CBS (`/api/v1/reforma`)
-- `POST /api/v1/reforma/auditar` — Auditoria em lote de itens de NF-e, NFC-e e NFS-e contra as regras oficiais da LC 214/2025 e NT 2025.002.
-- `GET /api/v1/reforma/lotes` — Listagem dos lotes auditados por competência.
-- `GET /api/v1/reforma/lotes/{id}` — Detalhamento do lote com comparativo lado a lado e status de auditoria.
-- `GET /api/v1/reforma/versao-rtc` — Versão ativa do motor da Calculadora RTC.
+- `POST /api/v1/reforma/conferir/notasync` — Auditoria em lote de itens de documentos da competência contra LC 214/2025.
+- `GET /api/v1/reforma/conferir/lotes` — Listagem dos lotes auditados por competência.
+- `GET /api/v1/reforma/versao` — Versão ativa do motor da Calculadora RTC da Receita Federal.
+- `GET /api/v1/reforma/conferir/lotes/{loteId}/exportar-csv` — Exportação em planilha das divergências de cálculo.
 
-### Módulo NotaSync — NFC-e SEF/SC (`/api/v1/notasync`)
-- `POST /api/v1/notasync/lote` — Endpoint receptor de metadados fiscais enviados pelo agente local, autenticado com token do escritório e com **deduplicação estrita pela chave de acesso**.
-- `GET /api/v1/notasync/resumo` — Resumo de métricas (total de notas, faturamento emitido, canceladas, pendências SAT).
-- `GET /api/v1/notasync/documentos` — Listagem paginada de NFC-e filtradas por CNPJ emitente e situação.
-- `GET /api/v1/notasync/execucoes` — Histórico de consultas do agente à SEF/SC com tempo de resposta e cStat traduzido.
-- `POST /notasync-simulador/ws/distribuicao/DistribuicaoNfceDownload.asmx` — Simulador SOAP da SEF/SC que devolve lotes compactados em gzip+base64 de notas fiscais fictícias para testes e demonstrações.
+### Módulo Em Dia — Rotinas e Obrigações (`/api/v1/emdia`)
+- `POST /api/v1/emdia/gerar-mes` — Geração mensal idempotente de tarefas a partir dos modelos do escritório.
+- `GET /api/v1/emdia/tarefas` — Listagem com filtros por competência, status e responsável.
+- `GET /api/v1/emdia/minhas-tarefas` — Painel do usuário logado (Hoje, Atrasadas, Da Semana).
+- `GET /api/v1/emdia/painel-mes` — Métricas consolidadas (em dia x atrasadas x aguardando cliente) por setor e responsável.
+- `GET /api/v1/emdia/modelos` — Listagem e edição dos modelos de obrigações do escritório.
+- `POST /api/v1/emdia/anotacoes` — Criação de notas no Diário da Empresa.
 
-### Conciliação Bancária (`/api/v1/conciliacoes`)
-- `GET /api/v1/conciliacoes` — Lista conciliações por empresa (CNPJ) e competência.
-- `GET /api/v1/conciliacoes/{id}` — Carrega o resumo, extrato e lançamentos conferidos.
-- `POST /api/v1/conciliacoes` — Salva ou atualiza conciliação com controle de versão otimista (`version`). Em caso de conflito concorrente, retorna `409 Conflict`.
-- `DELETE /api/v1/conciliacoes/{id}` — Remove conciliação salva.
+### Endpoints Agendados (Cron Jobs Internos)
+- `POST /interno/notasync/rodar` — Ciclo periódico do coletor NotaSync (protegido por `X-Notasync-Cron-Secret`).
+- `POST /interno/emdia/gerar-mes-cron` — Ciclo mensal do gerador de tarefas do Em Dia (protegido por `X-Notasync-Cron-Secret`).
 
-### Escritórios Contábeis & Assinaturas (`/api/v1/escritorios`)
-- `GET /api/v1/escritorios` — Listagem de escritórios contábeis cadastrados.
-- `POST /api/v1/escritorios/trial` — Criação de acesso de teste gratuito (trial) com expiração programada.
-- `POST /api/v1/escritorios/{id}/converter` — Conversão de escritório em teste para cliente ativo.
-- `POST /api/v1/escritorios/{id}/suspender` — Suspensão de acesso do escritório.
-- `POST /api/v1/escritorios/{id}/reativar` — Reativação de acesso do escritório.
+### Privacidade & LGPD (`/api/v1/escritorio/lgpd`)
+- `GET /api/v1/escritorio/lgpd/exportar-dados` — Exportação completa em ZIP (Art. 18 LGPD) contendo JSONs de todos os dados do escritório.
+- `POST /api/v1/escritorio/lgpd/excluir-escritorio` — Exclusão permanente do escritório e expurgo atômico de dados (Art. 17 LGPD), com confirmação obrigatória de CNPJ.
 
-### Empresas & Clientes (`/api/v1/empresas`)
-- `GET /api/v1/empresas` — Lista as empresas clientes do escritório ativo.
-- `POST /api/v1/empresas` — Cadastra ou atualiza empresa cliente com dados societários.
-- `GET /api/v1/empresas/{id}` — Ficha cadastral detalhada da empresa.
-- `GET /api/v1/receita/cnpj/{cnpj}` — Consulta dados oficiais do CNPJ na BrasilAPI com cache de 24 horas.
+### Monitoramento de Saúde
+- `GET /health` e `GET /api/health` — Endpoint público de health check (retorna 200 UP e versão 4.0.0).
 
 ---
 
-## 🚀 Como Rodar Localmente
+## 🧭 Roadmap
 
-### 1. Pré-requisitos
-- JDK 21 instalado
-- Docker e Docker Compose (para subir o banco PostgreSQL)
-
-### 2. Configurar Variáveis de Ambiente
-Copie o arquivo de exemplo e ajuste se necessário:
-```bash
-cp .env.example .env
-```
-
-### 3. Subir o Banco de Dados com Docker
-```bash
-docker compose up -d
-```
-O PostgreSQL iniciará na porta `5432` com banco `makerpixel_contabil`. As migrações do Flyway (`V1`, `V2`, `V3__notasync_nfce.sql`) serão executadas automaticamente na inicialização da aplicação.
-
-### 4. Executar a Aplicação
-No Linux/macOS:
-```bash
-./mvnw spring-boot:run
-```
-No Windows:
-```bash
-mvnw.cmd spring-boot:run
-```
-
-A API estará acessível em: `http://localhost:8080/`
-
----
-
-## ☁️ Deploy no Supabase e Render
-
-### 1. Banco de Dados no Supabase
-1. Crie um projeto gratuito no [Supabase](https://supabase.com/);
-2. Em **Project Settings > Database**, copie a URI de conexão (Pooler ou Direct connection):
-   ```
-   jdbc:postgresql://db.<PROJECT_REF>.supabase.co:5432/postgres?sslmode=require
-   ```
-3. O Flyway executará as migrações `V1`, `V2` e `V3` automaticamente ao inicializar a API.
-
-### 2. Deploy da API no Render
-1. Conecte o repositório `makerpixel-gestao-api` no [Render](https://render.com/) como **Web Service**;
-2. Configure o runtime como **Docker** (utilizando o `Dockerfile` existente no projeto) ou **Java / Maven**:
-   - **Build Command:** `./mvnw clean package -DskipTests`
-   - **Start Command:** `java -jar target/makerpixel-gestao-api-0.0.1-SNAPSHOT.jar`
-3. Configure as variáveis de ambiente no painel do Render:
-   - `SPRING_DATASOURCE_URL`: a URL JDBC do Supabase
-   - `SPRING_DATASOURCE_USERNAME`: `postgres`
-   - `SPRING_DATASOURCE_PASSWORD`: sua senha do Supabase
-   - `JWT_SECRET`: uma chave de pelo menos 256 bits para assinatura dos tokens
-   - `PORT`: `8080`
-
----
-
-## 🔒 Segurança & LGPD
-
-- Senhas nunca são armazenadas em texto plano (BCrypt com salt);
-- Chaves privadas e certificados A1 **permanecem no agente local**;
-- Isolamento multi-tenant gerenciado pelo contexto de requisição (`TenantContext`) e PostgreSQL RLS;
-- Dados 100% fictícios no demo e testes.
+- Conciliação bancária e importação de planilhas: em estudo, a serem desenvolvidas de forma genérica.

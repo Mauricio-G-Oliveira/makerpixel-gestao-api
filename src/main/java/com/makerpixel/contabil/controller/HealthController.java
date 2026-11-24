@@ -9,15 +9,14 @@ import java.time.OffsetDateTime;
 import java.util.Map;
 
 @RestController
-@RequestMapping("/api")
 public class HealthController {
 
-    @GetMapping("/health")
+    @GetMapping({"/health", "/api/health"})
     public ResponseEntity<Map<String, Object>> health() {
         return ResponseEntity.ok(Map.of(
             "status", "UP",
             "servico", "MakerPixel Contábil API",
-            "versao", "1.0.0",
+            "versao", "4.0.0",
             "timestamp", OffsetDateTime.now().toString()
         ));
     }

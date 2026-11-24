@@ -41,6 +41,12 @@ makerpixel:
     whatsapp: "5548999999999"
     email: "mauriciogoulart.deoliveira37@gmail.com"
 
+cors:
+  allowed-origins: ${CORS_ALLOWED_ORIGINS:https://app.makerpixeltech.com.br,https://makerpixeltech.com.br,https://www.makerpixeltech.com.br,http://localhost:5173,http://localhost:4173}
+
+notasync:
+  cron-secret: ${NOTASYNC_CRON_SECRET:notasync_cron_default_secret_2026}
+
 management:
   endpoints:
     web:

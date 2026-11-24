@@ -44,6 +44,21 @@ public class Empresa {
     private String bairro;
     private String telefone;
 
+    @Column(length = 30)
+    private String tipo = "LTDA";
+
+    @Column(name = "tem_funcionario")
+    private Boolean temFuncionario = false;
+
+    @Column(name = "responsavel_setor_fiscal", length = 150)
+    private String responsavelSetorFiscal;
+
+    @Column(name = "responsavel_setor_contabil", length = 150)
+    private String responsavelSetorContabil;
+
+    @Column(name = "responsavel_setor_dp", length = 150)
+    private String responsavelSetorDp;
+
     @Column(name = "situacao_cadastral", length = 20)
     private String situacaoCadastral = "ATIVA";
 
@@ -58,9 +73,6 @@ public class Empresa {
 
     @Column(name = "data_consulta_receita")
     private OffsetDateTime dataConsultaReceita;
-
-    @OneToMany(mappedBy = "empresa", cascade = CascadeType.ALL, orphanRemoval = true)
-    private List<Socio> socios = new ArrayList<>();
 
     @Column(name = "criado_em", nullable = false, updatable = false)
     private OffsetDateTime criadoEm = OffsetDateTime.now();
@@ -149,8 +161,20 @@ public class Empresa {
     public OffsetDateTime getDataConsultaReceita() { return dataConsultaReceita; }
     public void setDataConsultaReceita(OffsetDateTime dataConsultaReceita) { this.dataConsultaReceita = dataConsultaReceita; }
 
-    public List<Socio> getSocios() { return socios; }
-    public void setSocios(List<Socio> socios) { this.socios = socios; }
+    public String getTipo() { return tipo; }
+    public void setTipo(String tipo) { this.tipo = tipo; }
+
+    public Boolean getTemFuncionario() { return temFuncionario != null && temFuncionario; }
+    public void setTemFuncionario(Boolean temFuncionario) { this.temFuncionario = temFuncionario; }
+
+    public String getResponsavelSetorFiscal() { return responsavelSetorFiscal; }
+    public void setResponsavelSetorFiscal(String responsavelSetorFiscal) { this.responsavelSetorFiscal = responsavelSetorFiscal; }
+
+    public String getResponsavelSetorContabil() { return responsavelSetorContabil; }
+    public void setResponsavelSetorContabil(String responsavelSetorContabil) { this.responsavelSetorContabil = responsavelSetorContabil; }
+
+    public String getResponsavelSetorDp() { return responsavelSetorDp; }
+    public void setResponsavelSetorDp(String responsavelSetorDp) { this.responsavelSetorDp = responsavelSetorDp; }
 
     public OffsetDateTime getCriadoEm() { return criadoEm; }
     public OffsetDateTime getAtualizadoEm() { return atualizadoEm; }
