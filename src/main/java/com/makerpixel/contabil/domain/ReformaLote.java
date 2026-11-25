@@ -58,7 +58,13 @@ public class ReformaLote {
     @Column(name = "atualizado_em", nullable = false)
     private OffsetDateTime atualizadoEm = OffsetDateTime.now();
 
+    @Column(name = "versao_calculadora", length = 50)
+    private String versaoCalculadora = "2026.01";
+
     public ReformaLote() {}
+
+    public String getVersaoCalculadora() { return versaoCalculadora; }
+    public void setVersaoCalculadora(String versaoCalculadora) { this.versaoCalculadora = versaoCalculadora; }
 
     public UUID getId() { return id; }
     public void setId(UUID id) { this.id = id; }

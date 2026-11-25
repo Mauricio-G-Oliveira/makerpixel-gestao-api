@@ -25,6 +25,8 @@ public interface EmDiaTarefaRepository extends JpaRepository<EmDiaTarefa, UUID> 
 
     boolean existsByEscritorioIdAndChaveDeduplicacaoAndStatusNotIn(UUID escritorioId, String chaveDeduplicacao, List<StatusTarefa> statusIgnorados);
 
+    Optional<EmDiaTarefa> findFirstByEscritorioIdAndChaveDeduplicacaoAndStatusNotIn(UUID escritorioId, String chaveDeduplicacao, List<StatusTarefa> statusIgnorados);
+
     @Query("SELECT t FROM EmDiaTarefa t WHERE t.escritorioId = :escritorioId AND t.responsavel = :responsavel AND t.status NOT IN ('CONCLUIDA', 'NAO_SE_APLICA') ORDER BY t.prazo ASC")
     List<EmDiaTarefa> findMinhasTarefasAbertas(@Param("escritorioId") UUID escritorioId, @Param("responsavel") String responsavel);
 

@@ -20,4 +20,18 @@ public interface ReformaItemRepository extends JpaRepository<ReformaItem, UUID> 
     Page<ReformaItem> findByLoteIdAndEscritorioIdAndClassificacao(UUID loteId, UUID escritorioId, String classificacao, Pageable pageable);
 
     Optional<ReformaItem> findByIdAndEscritorioId(UUID id, UUID escritorioId);
+
+    boolean existsByEscritorioIdAndChaveNfeAndVersaoCalculadora(UUID escritorioId, String chaveNfe, String versaoCalculadora);
+
+    List<ReformaItem> findByEscritorioIdAndChaveNfe(UUID escritorioId, String chaveNfe);
+
+    long countByEscritorioIdAndClassificacao(UUID escritorioId, String classificacao);
+
+    @org.springframework.data.jpa.repository.Query("SELECT COUNT(i) FROM ReformaItem i WHERE i.escritorioId = :escritorioId AND i.criadoEm >= :desde")
+    long countAuditadosDesde(@org.springframework.data.repository.query.Param("escritorioId") UUID escritorioId, @org.springframework.data.repository.query.Param("desde") java.time.OffsetDateTime desde);
+
+    @org.springframework.data.jpa.repository.Query("SELECT COUNT(i) FROM ReformaItem i WHERE i.escritorioId = :escritorioId AND i.classificacao <> 'OK' AND i.criadoEm >= :desde")
+    long countDivergenciasDesde(@org.springframework.data.repository.query.Param("escritorioId") UUID escritorioId, @org.springframework.data.repository.query.Param("desde") java.time.OffsetDateTime desde);
+
+    void deleteByLoteIdAndEscritorioId(UUID loteId, UUID escritorioId);
 }

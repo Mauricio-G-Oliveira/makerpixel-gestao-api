@@ -99,3 +99,30 @@ Este documento descreve os 6 passos práticos para validação completa da **Cen
 2. Localize a seção **"Privacidade e Conformidade LGPD"**:
    - **Exportar Meus Dados:** Clique em *"Baixar Arquivo dos Dados (ZIP)"*. O sistema entrega um arquivo ZIP com todos os dados cadastrais, empresas, tarefas e metadados de certificados em formato JSON limpo.
    - **Direito ao Esquecimento:** Clique em *"Excluir Escritório Definitivamente"*. Digite o CNPJ do escritório para confirmação dupla. Ao confirmar, todos os dados, certificados e usuários são expurgados em definitivo do banco de dados e a sessão é encerrada.
+
+
+---
+
+## 🤖 8. Teste de Ponta a Ponta: Auditoria Contínua (v4.1.0)
+1. **Entrada Automática:**
+   - As notas fiscais entram pelo NotaSync (SEF/SC - mod 65) e pela integração SIEG (NF-e mod 55 e CT-e mod 57).
+   - O serviço de ingestão unificado grava em `documento_fiscal`, deduplicando por chave de acesso única e vinculando todas as fontes que trouxeram o documento.
+   - Uma pendência de auditoria é automaticamente gerada em `auditoria_pendente`.
+2. **Conferência em Segundo Plano:**
+   - O processador em nuvem (`/interno/reforma/processar-pendentes` ou botão *"Conferir pendentes agora"*) consome a fila em lotes pequenos.
+   - Cada item da nota é auditado contra a Calculadora RTC com isolamento multi-tenant por `escritorio_id`.
+   - Se a chave já foi auditada na mesma versão da calculadora, o processamento é ignorado de forma idempotente.
+3. **Painel do Mês com Semáforo:**
+   - O contador acessa **Reforma Tributária** na aba **Auditoria Contínua**.
+   - Cada empresa exibe o semáforo em tempo real:
+     - 🟢 **Verde:** todos os itens auditados e em conformidade fiscal.
+     - 🟡 **Amarelo:** poucas divergências leves (1 a 5 itens).
+     - 🔴 **Vermelho:** divergências elevadas (> 5 itens) ou notas sem grupo IBS/CBS emitidas no ERP.
+     - ⚪ **Cinza:** sem notas ou pendências no mês selecionado.
+   - O card **"Desde ontem"** resume notas conferidas e novas divergências nas últimas 24 horas.
+4. **Drill-down e Resolução:**
+   - Ao clicar na empresa, a tela abre o comparativo item a item com memória de cálculo, fundamentação legal e exportação CSV.
+5. **Integração Em Dia:**
+   - Se a auditoria contínua aponta divergências, uma tarefa *"Revisar divergências IBS/CBS – empresa X – mês Y"* é criada ou atualizada automaticamente no Em Dia sem duplicidades.
+6. **Reconferência sob Demanda:**
+   - Ao clicar em *"Reconferir"*, o contador confirma a re-auditoria de todos os documentos da empresa com a versão ativa do motor tributário.

@@ -4,6 +4,34 @@ Todas as modificações e melhorias relevantes da API são registradas neste doc
 
 ---
 
+## [4.1.0] - 2026-11-25
+
+### 🚀 Central Contábil API v4.1: Auditoria Contínua & Hub de Fontes de Documentos
+
+#### Hub Unificado de Documentos Fiscais Multi-Fonte
+- **Tabela `documento_fiscal`:** Ingestão centralizada de documentos fiscais com chave de acesso única por escritório (`uk_doc_fiscal_escritorio_chave`).
+- **Deduplicação Inteligente:** Mesma chave vinda de múltiplas fontes (`NOTASYNC_SEF`, `SIEG`, `UPLOAD`) compõe um único registro com lista agregada de origens.
+- **Tratamento de Cancelamentos:** Eventos de cancelamento posteriores atualizam a situação do documento existente sem duplicar registros.
+- **Padrão Strategy (`FonteDocumentos`):** Implementações modulares e desacopladas `NotaSyncSefFonte`, `UploadFonte` e `SiegFonte`.
+
+#### Auditoria Contínua e Idempotente de IBS/CBS
+- **Fila `auditoria_pendente`:** Desacoplamento total entre o download/ingestão de documentos e a execução do cálculo tributário.
+- **Worker Resiliente (`AuditoriaContinuaWorkerService`):** Processamento em segundo plano consumindo a fila em lotes, com retentativas e backoff exponencial em caso de indisponibilidade da Calculadora RTC.
+- **Idempotência por Chave + Versão:** Documentos já auditados na mesma versão ativa da Calculadora RTC são preservados sem re-cálculo desnecessário.
+- **Sincronização com Em Dia:** Geração/atualização automática da tarefa *"Revisar divergências IBS/CBS – empresa X – mês Y"* sem duplicidades se houver pendências fiscais.
+- **Reconferência sob Demanda:** Endpoint para reprocessar todo o mês de uma empresa quando houver atualização das regras tributárias da LC 214/2025.
+
+#### Integração SIEG (NF-e 55 & CT-e 57)
+- **Cofre Seguro de Credenciais:** Chaves de API de terceiros armazenadas com criptografia de envelope AES-256-GCM (`sieg_config`).
+- **Endpoints Seguros (`/api/v1/integracoes/sieg`):** Consulta mascarada (exibindo apenas os últimos 4 dígitos e data), salvamento no cofre, teste de conexão e remoção.
+- **Logs Sanitizados:** Logs estritamente sem chaves, XMLs brutos ou dados pessoais.
+
+#### Infraestrutura, Banco e Deploy
+- **Migration Flyway V11 (`V11__auditoria_continua.sql`):** Criação das tabelas `documento_fiscal`, `auditoria_pendente`, `sieg_config`, índices de performance, políticas de isolamento RLS e purga de resquícios de módulos legados.
+- **Pipeline Render Orquestrado (`render.yaml`):** Agendamento coordenado em sequência com Postgres advisory lock: NotaSync (04:00) → SIEG (04:30) → Auditoria Contínua (05:00) → Em Dia (06:00).
+
+---
+
 ## [4.0.0] - 2026-11-24
 
 ### 🚀 Central Contábil API v4: Produto Enxuto, Em Dia Reescrito, Cron Agendado, LGPD e Deploy

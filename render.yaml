@@ -18,7 +18,7 @@ services:
       - key: SPRING_DATASOURCE_PASSWORD
         sync: false
       - key: CENTRAL_MASTER_KEY
-        sync: false # Chave AES-256 de 32 bytes em Base64 para cifrar o cofre de certificados
+        sync: false # Chave AES-256 de 32 bytes em Base64 para cifrar o cofre de certificados e credenciais SIEG
       - key: JWT_SECRET
         sync: false # Segredo para assinatura de tokens JWT
       - key: NOTASYNC_CRON_SECRET
@@ -50,14 +50,18 @@ services:
         value: America/Sao_Paulo
 
   # ==============================================================================
-  # 3. Cron Job: NotaSync Nuvem (Coletor periódico de documentos fiscais)
+  # 3. Pipeline Agendado de Auditoria Contínua (Render Cron Jobs)
+  # Ordem estrita de execução com advisory lock no PostgreSQL:
+  # NotaSync (04:00) -> SIEG (04:30) -> Auditoria Contínua (05:00) -> Em Dia (06:00)
   # ==============================================================================
+
+  # Etapa 1: NotaSync Nuvem (Coleta SEF/SC - NFC-e modelo 65)
   - type: cron
-    name: notasync-cron-coletor
+    name: 01-notasync-cron-coletor
     runtime: image
     image:
       url: curlimages/curl:latest
-    schedule: "0 */2 * * *" # A cada 2 horas
+    schedule: "0 4 * * *" # Diariamente às 04:00 (America/Sao_Paulo)
     envVars:
       - key: API_URL
         value: https://central-contabil-api.onrender.com
@@ -65,15 +69,41 @@ services:
         sync: false
     startCommand: "curl -fsS -X POST \"$API_URL/interno/notasync/rodar\" -H \"X-Notasync-Cron-Secret: $NOTASYNC_CRON_SECRET\""
 
-  # ==============================================================================
-  # 4. Cron Job: Em Dia (Geração mensal automática de obrigações e tarefas)
-  # ==============================================================================
+  # Etapa 2: SIEG Nuvem (Coleta NF-e modelo 55 e CT-e modelo 57)
   - type: cron
-    name: emdia-cron-gerador
+    name: 02-sieg-cron-coletor
     runtime: image
     image:
       url: curlimages/curl:latest
-    schedule: "0 6 1 * *" # Todo dia 1 do mês às 06:00
+    schedule: "30 4 * * *" # Diariamente às 04:30 (America/Sao_Paulo)
+    envVars:
+      - key: API_URL
+        value: https://central-contabil-api.onrender.com
+      - key: NOTASYNC_CRON_SECRET
+        sync: false
+    startCommand: "curl -fsS -X POST \"$API_URL/interno/sieg/rodar\" -H \"X-Notasync-Cron-Secret: $NOTASYNC_CRON_SECRET\""
+
+  # Etapa 3: Auditoria Contínua IBS/CBS (Processamento da fila auditoria_pendente)
+  - type: cron
+    name: 03-reforma-cron-auditoria-continua
+    runtime: image
+    image:
+      url: curlimages/curl:latest
+    schedule: "0 5 * * *" # Diariamente às 05:00 (America/Sao_Paulo)
+    envVars:
+      - key: API_URL
+        value: https://central-contabil-api.onrender.com
+      - key: NOTASYNC_CRON_SECRET
+        sync: false
+    startCommand: "curl -fsS -X POST \"$API_URL/interno/reforma/processar-pendentes\" -H \"X-Notasync-Cron-Secret: $NOTASYNC_CRON_SECRET\""
+
+  # Etapa 4: Em Dia (Geração/Atualização de tarefas e obrigações fiscais)
+  - type: cron
+    name: 04-emdia-cron-gerador
+    runtime: image
+    image:
+      url: curlimages/curl:latest
+    schedule: "0 6 * * *" # Diariamente às 06:00 (America/Sao_Paulo)
     envVars:
       - key: API_URL
         value: https://central-contabil-api.onrender.com

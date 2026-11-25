@@ -38,8 +38,7 @@ public class Escritorio {
 
     @Column(name = "modulos_ativos")
     private String[] modulosAtivos = new String[]{
-        "CONCILIACAO_BANCARIA", "INTEGRACAO_UNICO", "VENCIMENTOS",
-        "EM_DIA", "FISCAL", "CONTROLE_HORAS", "ENCERRAMENTO_LUCROS", "NOTASYNC"
+        "NOTASYNC", "REFORMA", "DANFSE", "XML_EXCEL", "EM_DIA"
     };
 
     @Column(name = "max_usuarios", nullable = false)

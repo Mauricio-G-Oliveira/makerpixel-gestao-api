@@ -1,6 +1,6 @@
-# Central Contábil API v4.0.0 — MakerPixel
+# Central Contábil API v4.1.0 — MakerPixel
 
-Backend RESTful corporativo desenvolvido em **Java 21** e **Spring Boot 3.3.4** para escritórios de contabilidade, fornecendo autenticação JWT, gestão multi-tenant com PostgreSQL Row Level Security (RLS), buscador de DF-e na SEF/SC (**NotaSync**), cofre seguro de certificados A1 (AES-256-GCM), auditoria da Reforma Tributária (IBS/CBS - LC 214/2025), gestão diária de rotinas (**Em Dia**) e conformidade com a LGPD.
+Backend RESTful corporativo desenvolvido em **Java 21** e **Spring Boot 3.3.4** para escritórios de contabilidade, fornecendo autenticação JWT, gestão multi-tenant com PostgreSQL Row Level Security (RLS), buscador de DF-e na SEF/SC (**NotaSync**), integração **SIEG** (NF-e 55 e CT-e 57), cofre seguro AES-256-GCM, **Auditoria Contínua** da Reforma Tributária (IBS/CBS - LC 214/2025), gestão diária de rotinas (**Em Dia**) e conformidade com a LGPD.
 
 ---
 
@@ -16,76 +16,65 @@ Backend RESTful corporativo desenvolvido em **Java 21** e **Spring Boot 3.3.4** 
 
 | Módulo / Recurso | Status | Descrição |
 | :--- | :---: | :--- |
-| **NotaSync Nuvem & Cofre A1** | **Produção** | Upload de certificados A1 (AES-256-GCM), monitoramento de empresas, busca contínua na SEF/SC, download em lote de XMLs (ZIP) e diagnósticos com tradução de erros (ex.: cStat 8002). |
-| **Auditor Reforma Tributária (LC 214/2025)** | **Produção** | Conferência item a item de IBS/CBS, alíquotas de teste de 2026, modal lado a lado com fundamentação legal e integração com a Calculadora RTC. |
+| **Auditoria Contínua IBS/CBS** | **Produção** | As notas entram automaticamente por múltiplas fontes, enfileiram em segundo plano e são auditadas de forma autônoma e idempotente pela Calculadora RTC. Painel com semáforo (🟢🟡🔴) e resumo das últimas 24h. |
+| **Hub Multi-Fontes (`documento_fiscal`)** | **Produção** | Deduplicação por chave de acesso única por escritório (`NOTASYNC_SEF`, `SIEG`, `UPLOAD`) com atualização em caso de cancelamento posterior. |
+| **Integração SIEG** | **Produção** | Coleta de NF-e (55) e CT-e (57) com chave de API criptografada no cofre AES-256-GCM, sem exposição de credenciais em logs ou tela. |
+| **NotaSync Nuvem & Cofre A1** | **Produção** | Upload de certificados A1 (AES-256-GCM), monitoramento de empresas, busca contínua na SEF/SC, download em lote de XMLs (ZIP) e diagnóstico de erro SAT 8002. |
+| **Em Dia (Rotinas e Obrigações)** | **Piloto** | Geração mensal idempotente de tarefas, modelos customizáveis, diário da empresa e criação de tarefas preventivas automáticas de divergência IBS/CBS. |
 | **DANFSe Nacional (WASM)** | **Produção** | Emissão e visualização de Documento Auxiliar da NFS-e 100% no navegador (zero envio de XML a servidores externos). |
 | **XML → Excel Universal** | **Produção** | Conversor de notas e itens para planilhas XLSX estruturadas, direto no navegador ou via endpoint de streaming da API. |
-| **Em Dia (Rotinas e Obrigações)** | **Piloto** | Geração mensal idempotente de tarefas, modelos customizáveis, diário da empresa e criação de tarefas preventivas automáticas. |
 | **Admin MakerPixel** | **Produção** | Criação de testes de 30 dias, gestão de planos e limites, prorrogações, conversões e suspensão imediata de escritórios. |
 | **Garantias LGPD (Artigos 17 e 18)** | **Produção** | Exportação completa dos dados do escritório em arquivo ZIP estruturado e expurgo definitivo com dupla confirmação do CNPJ. |
 | **Modo Demonstração** | **Demonstração** | Flag `VITE_MODO_DEMO=true` no front para visualização com sementes fictícias em memória sem conexão obrigatória à API. |
 
 ---
 
-## 🛠️ Tecnologias Utilizadas
+## ⚙️ O que é Automático vs. o que Depende de Configuração
 
-- **Linguagem:** Java 21 (LTS)
-- **Framework:** Spring Boot 3.3.4 (Spring Web, Security, Data JPA, Validation)
-- **Segurança:** Spring Security 6 + JWT (jjwt 0.12.6), senhas com BCrypt e cofre AES-256-GCM
-- **Persistência:** PostgreSQL 16 gerenciado no Supabase com Flyway Migrations (V1 a V10)
-- **Integrações Oficiais:**
-  - Calculadora RTC (Receita Federal / LC 214/2025) via microsserviço privado em container Docker
-  - BrasilAPI (consulta pública de CNPJ com cache de 24h)
-  - SEF/SC Web Service para Contadores (Boletim Técnico 2026/003)
-- **Deploy:** Render Web Service (API) e Render Private Service (RTC) via `render.yaml`
+### 🤖 O que roda 100% automático:
+1. **Coleta de NFC-e na SEF/SC:** execução diária às 04:00 via NotaSync Nuvem.
+2. **Coleta de NF-e e CT-e na SIEG:** execução diária às 04:30 via pipeline agendado.
+3. **Deduplicação de Documentos:** notas recebidas de mais de uma fonte viram um único registro com lista de fontes agregada.
+4. **Auditoria Contínua:** conferência diária às 05:00 pela Calculadora RTC dos itens novos (com idempotência por chave + versão).
+5. **Geração e Atualização de Tarefas no Em Dia:** às 06:00, tarefas preventivas de divergências IBS/CBS e erro SAT 8002 são criadas ou atualizadas sem duplicações.
 
----
+### 🔑 O que depende de configuração do escritório:
+- **Certificado Digital A1 no Cofre:** necessário para o NotaSync autenticar perante a SEF/SC.
+- **Vínculo SAT na SEF/SC:** o contador precisa estar cadastrado e autorizado pela empresa no portal SAT de Santa Catarina (caso contrário, a SEF retorna cStat 8002).
+- **Chave de API da SIEG:** informada pelo escritório na tela *Integrações > SIEG* (armazenada de forma cifrada no cofre AES-256-GCM).
 
-## 📋 Endpoints Principais
-
-### Autenticação & Sessão (`/api/auth`)
-- `POST /api/auth/login` — Autenticação de usuário com email e senha; retorna Bearer Token JWT.
-- `GET /api/auth/me` — Dados do usuário logado e permissões de acesso.
-- `POST /api/auth/trocar-senha` — Troca de senha provisória ou redefinição de credencial.
-
-### Módulo NotaSync — DF-e & Cofre A1 (`/api/v1/notasync`, `/api/v1/certificados`)
-- `POST /api/v1/certificados/upload` — Upload multipart de certificado A1 criptografado com termo aceito.
-- `GET /api/v1/certificados/ativo` — Metadados do certificado ativo (CNPJ, validade, titular mascarado).
-- `DELETE /api/v1/certificados/{id}` — Remoção segura do certificado.
-- `GET /api/v1/notasync/empresas` — Lista e gerencia empresas com monitoramento de DF-e ativo.
-- `POST /api/v1/notasync/buscar-agora/{cnpj}` — Disparo manual de busca com controle de rate limit (429).
-- `GET /api/v1/notasync/documentos` — Listagem com filtros por empresa, competência e canceladas.
-- `GET /api/v1/notasync/empresas/{cnpj}/mes/{anoMes}/zip` — Stream de download do ZIP com os XMLs do mês.
-- `GET /api/v1/notasync/empresas/{cnpj}/mes/{anoMes}/excel` — Stream de exportação da planilha XLSX/CSV do mês.
-- `GET /api/v1/notasync/execucoes` — Histórico de consultas com cStat traduzido e diagnóstico.
-
-### Módulo Reforma Tributária — IBS/CBS (`/api/v1/reforma`)
-- `POST /api/v1/reforma/conferir/notasync` — Auditoria em lote de itens de documentos da competência contra LC 214/2025.
-- `GET /api/v1/reforma/conferir/lotes` — Listagem dos lotes auditados por competência.
-- `GET /api/v1/reforma/versao` — Versão ativa do motor da Calculadora RTC da Receita Federal.
-- `GET /api/v1/reforma/conferir/lotes/{loteId}/exportar-csv` — Exportação em planilha das divergências de cálculo.
-
-### Módulo Em Dia — Rotinas e Obrigações (`/api/v1/emdia`)
-- `POST /api/v1/emdia/gerar-mes` — Geração mensal idempotente de tarefas a partir dos modelos do escritório.
-- `GET /api/v1/emdia/tarefas` — Listagem com filtros por competência, status e responsável.
-- `GET /api/v1/emdia/minhas-tarefas` — Painel do usuário logado (Hoje, Atrasadas, Da Semana).
-- `GET /api/v1/emdia/painel-mes` — Métricas consolidadas (em dia x atrasadas x aguardando cliente) por setor e responsável.
-- `GET /api/v1/emdia/modelos` — Listagem e edição dos modelos de obrigações do escritório.
-- `POST /api/v1/emdia/anotacoes` — Criação de notas no Diário da Empresa.
-
-### Endpoints Agendados (Cron Jobs Internos)
-- `POST /interno/notasync/rodar` — Ciclo periódico do coletor NotaSync (protegido por `X-Notasync-Cron-Secret`).
-- `POST /interno/emdia/gerar-mes-cron` — Ciclo mensal do gerador de tarefas do Em Dia (protegido por `X-Notasync-Cron-Secret`).
-
-### Privacidade & LGPD (`/api/v1/escritorio/lgpd`)
-- `GET /api/v1/escritorio/lgpd/exportar-dados` — Exportação completa em ZIP (Art. 18 LGPD) contendo JSONs de todos os dados do escritório.
-- `POST /api/v1/escritorio/lgpd/excluir-escritorio` — Exclusão permanente do escritório e expurgo atômico de dados (Art. 17 LGPD), com confirmação obrigatória de CNPJ.
-
-### Monitoramento de Saúde
-- `GET /health` e `GET /api/health` — Endpoint público de health check (retorna 200 UP e versão 4.0.0).
+### 📊 Limites por Plano:
+- Documentos conferidos automaticamente no mês (limite padrão: 5.000 documentos/mês).
+- Ao atingir o limite mensal, as pendências permanecem na fila aguardando o próximo ciclo ou upgrade de plano.
 
 ---
 
-## 🧭 Roadmap
+## 🔒 Variáveis de Ambiente
 
-- Conciliação bancária e importação de planilhas: em estudo, a serem desenvolvidas de forma genérica.
+| Variável | Obrigatória | Finalidade |
+| :--- | :---: | :--- |
+| `SPRING_DATASOURCE_URL` | Sim | URL de conexão PostgreSQL/Supabase com SSL (`sslmode=require`) |
+| `SPRING_DATASOURCE_USERNAME` | Sim | Usuário do banco de dados |
+| `SPRING_DATASOURCE_PASSWORD` | Sim | Senha do banco de dados |
+| `CENTRAL_MASTER_KEY` | Sim | Chave-mestra AES-256 de 32 bytes em Base64 para cifrar o cofre (certificados e chaves de API da SIEG) |
+| `JWT_SECRET` | Sim | Segredo criptográfico para assinatura e validação dos tokens JWT |
+| `NOTASYNC_CRON_SECRET` | Sim | Segredo compartilhado via header `X-Notasync-Cron-Secret` para autorização dos endpoints internos do Render |
+| `CORS_ALLOWED_ORIGINS` | Não | Lista de origens autorizadas (ex.: `https://app.makerpixeltech.com.br`) |
+| `RTC_CALCULADORA_URL` | Não | URL do serviço privado da Calculadora RTC (padrão `http://central-contabil-calculadora-rtc:8088`) |
+| `TZ` | Não | Fuso horário padrão da aplicação (`America/Sao_Paulo`) |
+
+---
+
+## 🗄️ Histórico de Migrations Flyway
+
+1. `V1__init_makerpixel.sql` — Estrutura base de escritórios, usuários e empresas.
+2. `V2__adicionar_indices_performance.sql` — Otimização de consultas frequentes.
+3. `V3__modulos_v3_reforma_danfse.sql` — Suporte aos módulos da Reforma e DANFSe.
+4. `V4__notasync_fase2_tabelas.sql` — Tabelas de controle de lotes e estados do NotaSync.
+5. `V5__notasync_fase3_certificados.sql` — Cofre de certificados com AES-256-GCM.
+6. `V6__notasync_fase4_empresas.sql` — Gestão e monitoramento de empresas clientes.
+7. `V7__reforma_lote_itens.sql` — Persistência de lotes e itens auditados da Reforma.
+8. `V8__notasync_fase6_fontes.sql` — Suporte a fontes NF-e (55) e CT-e (57).
+9. `V9__remover_tabelas_descontinuadas.sql` — Expurgado acervo de módulos descontinuados.
+10. `V10__emdia_novo_modulo.sql` — Novo módulo Em Dia reescrito com geração idempotente.
+11. `V11__auditoria_continua.sql` — Hub multi-fonte (`documento_fiscal`), fila `auditoria_pendente`, integração `sieg_config`, RLS e limpeza de resíduos legados.

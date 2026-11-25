@@ -503,4 +503,51 @@ public class EmDiaService {
             "executadoEm", OffsetDateTime.now().toString()
         );
     }
+
+    /**
+     * Cria ou atualiza a tarefa no Em Dia para revisão de divergências da auditoria contínua,
+     * garantindo que nunca seja duplicada se já houver uma aberta para o mesmo escritório, empresa e competência.
+     */
+    @Transactional
+    public void criarOuAtualizarTarefaDivergenciaContinua(
+            UUID escritorioId,
+            UUID empresaId,
+            String razaoSocial,
+            String competencia,
+            int totalDivergencias
+    ) {
+        if (totalDivergencias <= 0) return;
+        List<StatusTarefa> statusIgnorados = List.of(StatusTarefa.CONCLUIDA, StatusTarefa.NAO_SE_APLICA);
+        String chaveDedup = "AUDITORIA_CONTINUA_DIV_" + empresaId + "_" + competencia;
+
+        Optional<EmDiaTarefa> optExistente = tarefaRepository.findFirstByEscritorioIdAndChaveDeduplicacaoAndStatusNotIn(
+                escritorioId, chaveDedup, statusIgnorados
+        );
+
+        String nomeTarefa = String.format("Revisar divergências IBS/CBS – %s – %s",
+                (razaoSocial != null && !razaoSocial.isBlank()) ? razaoSocial : "Empresa", competencia);
+
+        if (optExistente.isPresent()) {
+            EmDiaTarefa t = optExistente.get();
+            t.setNome(nomeTarefa);
+            t.setDescricao(String.format("Detectadas %d divergência(s) de IBS/CBS na auditoria contínua da competência %s.", totalDivergencias, competencia));
+            t.setAtualizadoEm(OffsetDateTime.now());
+            tarefaRepository.save(t);
+        } else {
+            Empresa emp = empresaRepository.findByIdAndEscritorioId(empresaId, escritorioId).orElse(null);
+            EmDiaTarefa t = new EmDiaTarefa();
+            t.setEscritorioId(escritorioId);
+            t.setEmpresaId(empresaId);
+            t.setNome(nomeTarefa);
+            t.setDescricao(String.format("Detectadas %d divergência(s) de IBS/CBS na auditoria contínua da competência %s.", totalDivergencias, competencia));
+            t.setSetor(SetorTarefa.FISCAL);
+            t.setMesCompetencia(competencia);
+            t.setPrazo(LocalDate.now().plusDays(5));
+            t.setStatus(StatusTarefa.A_FAZER);
+            t.setResponsavel(emp != null ? emp.getResponsavelSetorFiscal() : null);
+            t.setOrigemAutomatica("AUDITORIA_CONTINUA");
+            t.setChaveDeduplicacao(chaveDedup);
+            tarefaRepository.save(t);
+        }
+    }
 }

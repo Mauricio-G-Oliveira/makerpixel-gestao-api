@@ -286,6 +286,24 @@ public class CofreCryptoService {
         cert.setAtualizadoEm(OffsetDateTime.now());
     }
 
+    public record TextoEncifrado(byte[] ciphertext, byte[] iv) {}
+
+    public TextoEncifrado cifrarTexto(String texto) {
+        if (texto == null) return null;
+        SecretKeySpec kek = derivarKek(this.masterKeyEnv);
+        byte[] iv = new byte[GCM_IV_LENGTH_BYTES];
+        new SecureRandom().nextBytes(iv);
+        byte[] ciphertext = cifrarAesGcm(texto.getBytes(StandardCharsets.UTF_8), kek, iv);
+        return new TextoEncifrado(ciphertext, iv);
+    }
+
+    public String decifrarTexto(byte[] ciphertext, byte[] iv) {
+        if (ciphertext == null || iv == null) return null;
+        SecretKeySpec kek = derivarKek(this.masterKeyEnv);
+        byte[] plaintext = decifrarAesGcm(ciphertext, kek, iv);
+        return new String(plaintext, StandardCharsets.UTF_8);
+    }
+
     // --- Métodos de Apoio Criptográfico ---
 
     private byte[] cifrarAesGcm(byte[] plaintext, SecretKeySpec key, byte[] iv) {

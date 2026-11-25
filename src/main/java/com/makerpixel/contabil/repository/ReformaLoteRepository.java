@@ -18,4 +18,9 @@ public interface ReformaLoteRepository extends JpaRepository<ReformaLote, UUID> 
     Page<ReformaLote> findByEscritorioIdOrderByCriadoEmDesc(UUID escritorioId, Pageable pageable);
 
     Optional<ReformaLote> findByIdAndEscritorioId(UUID id, UUID escritorioId);
+
+    Optional<ReformaLote> findFirstByEscritorioIdAndEmpresaIdAndCompetenciaAndOrigemOrderByCriadoEmDesc(
+            UUID escritorioId, UUID empresaId, String competencia, String origem);
+
+    List<ReformaLote> findByEscritorioIdAndCompetenciaAndOrigem(UUID escritorioId, String competencia, String origem);
 }

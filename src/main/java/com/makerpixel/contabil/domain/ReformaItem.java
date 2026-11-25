@@ -98,7 +98,19 @@ public class ReformaItem {
     @Column(name = "criado_em", nullable = false, updatable = false)
     private OffsetDateTime criadoEm = OffsetDateTime.now();
 
+    @Column(name = "versao_calculadora", length = 50)
+    private String versaoCalculadora = "2026.01";
+
+    @Column(name = "documento_id")
+    private UUID documentoId;
+
     public ReformaItem() {}
+
+    public String getVersaoCalculadora() { return versaoCalculadora; }
+    public void setVersaoCalculadora(String versaoCalculadora) { this.versaoCalculadora = versaoCalculadora; }
+
+    public UUID getDocumentoId() { return documentoId; }
+    public void setDocumentoId(UUID documentoId) { this.documentoId = documentoId; }
 
     public UUID getId() { return id; }
     public void setId(UUID id) { this.id = id; }
