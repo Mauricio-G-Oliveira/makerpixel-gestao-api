@@ -15,7 +15,7 @@ public class InternoEmDiaController {
 
     private final EmDiaService emDiaService;
 
-    @Value("${notasync.cron-secret:${NOTASYNC_CRON_SECRET:notasync_cron_default_secret_2026}}")
+    @Value("${notasync.cron-secret:${NOTASYNC_CRON_SECRET:}}")
     private String cronSecret;
 
     public InternoEmDiaController(EmDiaService emDiaService) {
@@ -25,15 +25,18 @@ public class InternoEmDiaController {
     /**
      * Endpoint interno chamado pelo Render Cron Job ou cron externo para gerar
      * tarefas do mês e tarefas automáticas para todos os escritórios ativos/em teste.
-     * Protegido pelo cabeçalho X-Notasync-Cron-Secret.
+     * Protegido exclusivamente pelo cabeçalho X-Notasync-Cron-Secret.
      */
     @PostMapping("/gerar-mes-cron")
     public ResponseEntity<Map<String, Object>> gerarMesCron(
-            @RequestHeader(value = "X-Notasync-Cron-Secret", required = false) String cronHeader,
-            @RequestParam(value = "secret", required = false) String cronParam
+            @RequestHeader(value = "X-Notasync-Cron-Secret", required = false) String cronHeader
     ) {
-        String secret = (cronHeader != null && !cronHeader.isBlank()) ? cronHeader : cronParam;
-        if (secret == null || !secret.equals(cronSecret)) {
+        if (cronSecret == null || cronSecret.isBlank() || cronHeader == null || cronHeader.isBlank()) {
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Segredo do cron não configurado ou ausente.");
+        }
+        if (!java.security.MessageDigest.isEqual(
+                cronSecret.getBytes(java.nio.charset.StandardCharsets.UTF_8),
+                cronHeader.getBytes(java.nio.charset.StandardCharsets.UTF_8))) {
             throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Segredo de cron inválido.");
         }
 

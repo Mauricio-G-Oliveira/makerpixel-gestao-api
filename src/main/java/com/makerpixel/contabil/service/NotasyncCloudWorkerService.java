@@ -452,9 +452,14 @@ public class NotasyncCloudWorkerService {
         return false;
     }
 
-    private boolean validarCronSecret(String secret) {
-        if (cronSecret == null || cronSecret.isBlank()) return true;
-        return cronSecret.equals(secret);
+    public boolean validarCronSecret(String secret) {
+        if (cronSecret == null || cronSecret.isBlank() || secret == null || secret.isBlank()) {
+            return false;
+        }
+        return java.security.MessageDigest.isEqual(
+                cronSecret.getBytes(java.nio.charset.StandardCharsets.UTF_8),
+                secret.getBytes(java.nio.charset.StandardCharsets.UTF_8)
+        );
     }
 
     private boolean adquirirTravaGlobal() {

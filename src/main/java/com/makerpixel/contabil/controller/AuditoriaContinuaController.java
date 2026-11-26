@@ -17,6 +17,8 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.server.ResponseStatusException;
 
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
 import java.time.OffsetDateTime;
 import java.time.YearMonth;
 import java.time.format.DateTimeFormatter;
@@ -33,6 +35,7 @@ public class AuditoriaContinuaController {
 
     private final AuditoriaContinuaWorkerService workerService;
     private final EmpresaRepository empresaRepository;
+    private final EscritorioRepository escritorioRepository;
     private final ReformaLoteRepository reformaLoteRepository;
     private final ReformaItemRepository reformaItemRepository;
     private final AuditoriaPendenteRepository auditoriaPendenteRepository;
@@ -45,9 +48,13 @@ public class AuditoriaContinuaController {
     @Value("${notasync.cron.secret:}")
     private String cronSecret;
 
+    @Value("${sieg.habilitada:false}")
+    private boolean siegHabilitada;
+
     public AuditoriaContinuaController(
             AuditoriaContinuaWorkerService workerService,
             EmpresaRepository empresaRepository,
+            EscritorioRepository escritorioRepository,
             ReformaLoteRepository reformaLoteRepository,
             ReformaItemRepository reformaItemRepository,
             AuditoriaPendenteRepository auditoriaPendenteRepository,
@@ -59,6 +66,7 @@ public class AuditoriaContinuaController {
     ) {
         this.workerService = workerService;
         this.empresaRepository = empresaRepository;
+        this.escritorioRepository = escritorioRepository;
         this.reformaLoteRepository = reformaLoteRepository;
         this.reformaItemRepository = reformaItemRepository;
         this.auditoriaPendenteRepository = auditoriaPendenteRepository;
@@ -213,7 +221,7 @@ public class AuditoriaContinuaController {
         });
 
         VersaoCalculadoraDto versaoRtc = calculadoraRtcClient.obterVersao();
-        long limiteMensal = 5000L;
+        long limiteMensal = obterLimitePlano(escritorioId);
         long totalAuditadoMes = linhasEmpresas.stream().mapToLong(PainelEmpresaDTO::totalNotas).sum();
 
         return ResponseEntity.ok(new PainelMesResponse(
@@ -229,12 +237,23 @@ public class AuditoriaContinuaController {
 
     /**
      * Dispara a conferência imediata dos documentos pendentes na fila.
+     * Protegido por lock distribuído por escritório para evitar execuções concorrentes.
      */
     @PostMapping("/api/v1/reforma/continua/conferir-pendentes")
     public ResponseEntity<ResultadoCicloAuditoria> conferirPendentesAgora() {
         UUID escritorioId = TenantContext.getEscritorioId();
-        ResultadoCicloAuditoria res = workerService.processarPendentes(escritorioId, 50);
-        return ResponseEntity.ok(res);
+        String lockKey = "reforma_auditoria_continua_" + escritorioId;
+        boolean adquiriuTrava = adquirirTrava(lockKey, REFORMA_LOCK);
+        if (!adquiriuTrava) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Auditoria contínua já em execução para este escritório.");
+        }
+
+        try {
+            ResultadoCicloAuditoria res = workerService.processarPendentes(escritorioId, 50);
+            return ResponseEntity.ok(res);
+        } finally {
+            liberarTrava(lockKey, REFORMA_LOCK);
+        }
     }
 
     /**
@@ -252,13 +271,13 @@ public class AuditoriaContinuaController {
 
     /**
      * Endpoint interno para agendamento Cron de processamento contínuo das pendências de auditoria.
+     * Autenticação estritamente via cabeçalho X-Notasync-Cron-Secret em tempo constante.
      */
     @PostMapping("/interno/reforma/processar-pendentes")
     public ResponseEntity<Map<String, Object>> internoProcessarPendentes(
-            @RequestHeader(value = "X-Notasync-Cron-Secret", required = false) String cronHeader,
-            @RequestParam(value = "secret", required = false) String cronParam
+            @RequestHeader(value = "X-Notasync-Cron-Secret", required = false) String cronHeader
     ) {
-        validarSecret(cronHeader, cronParam);
+        validarSecret(cronHeader);
 
         boolean adquiriuTrava = adquirirTrava("reforma_auditoria_continua", REFORMA_LOCK);
         if (!adquiriuTrava) {
@@ -286,10 +305,16 @@ public class AuditoriaContinuaController {
      */
     @PostMapping("/interno/sieg/rodar")
     public ResponseEntity<Map<String, Object>> internoSiegRodar(
-            @RequestHeader(value = "X-Notasync-Cron-Secret", required = false) String cronHeader,
-            @RequestParam(value = "secret", required = false) String cronParam
+            @RequestHeader(value = "X-Notasync-Cron-Secret", required = false) String cronHeader
     ) {
-        validarSecret(cronHeader, cronParam);
+        validarSecret(cronHeader);
+
+        if (!siegHabilitada) {
+            return ResponseEntity.ok(Map.of(
+                    "status", "DESABILITADO",
+                    "mensagem", "Integração SIEG desabilitada temporariamente (aguardando documentação oficial da API)."
+            ));
+        }
 
         boolean adquiriuTrava = adquirirTrava("sieg_sincronizacao", SIEG_LOCK);
         if (!adquiriuTrava) {
@@ -320,11 +345,25 @@ public class AuditoriaContinuaController {
         }
     }
 
-    private void validarSecret(String header, String param) {
-        String secret = (header != null && !header.isBlank()) ? header : param;
-        if (cronSecret != null && !cronSecret.isBlank() && !cronSecret.equals(secret)) {
+    private void validarSecret(String header) {
+        if (cronSecret == null || cronSecret.isBlank() || header == null || header.isBlank()) {
             throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Segredo do cron inválido.");
         }
+        if (!MessageDigest.isEqual(cronSecret.getBytes(StandardCharsets.UTF_8), header.getBytes(StandardCharsets.UTF_8))) {
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Segredo do cron inválido.");
+        }
+    }
+
+    private long obterLimitePlano(UUID escritorioId) {
+        if (escritorioId == null) return 5000L;
+        return escritorioRepository.findById(escritorioId)
+                .map(Escritorio::getPlanoId)
+                .map(p -> switch (p.toLowerCase()) {
+                    case "plano-essencial", "basico" -> 1000L;
+                    case "plano-escritorio-plus", "avancado", "plus" -> 20000L;
+                    default -> 5000L;
+                })
+                .orElse(5000L);
     }
 
     private boolean adquirirTrava(String lockKey, ReentrantLock memLock) {

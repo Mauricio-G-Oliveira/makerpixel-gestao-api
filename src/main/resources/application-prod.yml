@@ -1,0 +1,9 @@
+# ==============================================================================
+# Central Contábil v4.1.1 - Perfil de Produção (application-prod.yml)
+# ==============================================================================
+
+rtc:
+  fallback-local: ${RTC_FALLBACK_LOCAL:false}
+
+sieg:
+  habilitada: ${SIEG_HABILITADA:false}

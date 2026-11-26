@@ -99,6 +99,14 @@ public class AuditoriaPendente {
         this.erroMensagem = erroMensagem;
     }
 
+    public String getMensagemErro() {
+        return erroMensagem;
+    }
+
+    public void setMensagemErro(String erroMensagem) {
+        this.erroMensagem = erroMensagem;
+    }
+
     public String getVersaoCalculadora() {
         return versaoCalculadora;
     }

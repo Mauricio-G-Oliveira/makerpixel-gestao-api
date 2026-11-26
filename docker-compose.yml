@@ -54,7 +54,7 @@ services:
       SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/makerpixel_contabil
       SPRING_DATASOURCE_USERNAME: makerpixel
       SPRING_DATASOURCE_PASSWORD: makerpixel_secret
-      JWT_SECRET: makerpixel-secret-token-key-super-secure-at-least-256-bits-length-tubarao-sc
+      JWT_SECRET: makerpixel-secret-token-key-super-secure-at-least-256-bits-length-sc-2026
       CENTRAL_MASTER_KEY: bWFrZXJwaXhlbC1tYXN0ZXIta2V5LTMyYnl0ZXM=
       RTC_CALCULADORA_URL: http://calculadora-rtc:8088
       TZ: America/Sao_Paulo

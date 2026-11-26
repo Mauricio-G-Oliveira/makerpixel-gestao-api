@@ -25,13 +25,18 @@ public class CalculadoraRtcClient {
 
     private final String baseUrl;
     private final RestClient restClient;
+    private final boolean fallbackLocal;
 
     // Cache local em memória para tabelas estáticas de dados abertos
     private final Map<String, List<CstIbsCbsDto>> cacheCst = new ConcurrentHashMap<>();
     private final Map<String, List<ClassificacaoTribDto>> cacheClassificacoes = new ConcurrentHashMap<>();
 
-    public CalculadoraRtcClient(@Value("${rtc.calculadora.url:http://localhost:8088}") String baseUrl) {
+    public CalculadoraRtcClient(
+            @Value("${rtc.calculadora.url:http://localhost:8088}") String baseUrl,
+            @Value("${rtc.fallback-local:true}") boolean fallbackLocal
+    ) {
         this.baseUrl = baseUrl.replaceAll("/+$", "");
+        this.fallbackLocal = fallbackLocal;
         
         SimpleClientHttpRequestFactory factory = new SimpleClientHttpRequestFactory();
         factory.setConnectTimeout((int) Duration.ofSeconds(3).toMillis());
@@ -58,10 +63,15 @@ public class CalculadoraRtcClient {
                 return response;
             }
         } catch (Exception e) {
-            log.warn("Calculadora RTC remota ({}) indisponível ou com erro: {}. Executando motor local de cálculo LC 214/2025.", baseUrl, e.getMessage());
+            log.warn("Calculadora RTC remota ({}) indisponível: {}", baseUrl, e.getMessage());
+            if (!fallbackLocal) {
+                throw new CalculadoraRtcIndisponivelException(
+                        "Calculadora RTC remota (" + baseUrl + ") indisponível e rtc.fallback-local=false: " + e.getMessage(), e);
+            }
+            log.warn("rtc.fallback-local=true: Executando motor local de cálculo LC 214/2025 para desenvolvimento.");
         }
 
-        // Fallback local robusto (garante funcionamento autônomo offline e testes)
+        // Fallback local (habilitado apenas quando rtc.fallback-local=true para dev/testes)
         return calcularLocalOffline(operacao);
     }
 
@@ -84,7 +94,11 @@ public class CalculadoraRtcClient {
             log.debug("Consulta /versao na calculadora remota falhou: {}", e.getMessage());
         }
 
-        return new VersaoCalculadoraDto("v1.0.0-embutido", "LC 214/2025 (Transição 2026)", "MOCK_OFFLINE", baseUrl, "2026-01-01", "Motor offline embutido para auditoria contábil");
+        if (!fallbackLocal) {
+            return new VersaoCalculadoraDto(null, null, "OFFLINE", baseUrl, null, "Calculadora RTC oficial indisponível");
+        }
+
+        return new VersaoCalculadoraDto("LOCAL-NAO-OFICIAL", "LC 214/2025 (Local)", "LOCAL_NAO_OFICIAL", baseUrl, "2026-01-01", "Motor offline embutido para ambiente de desenvolvimento");
     }
 
     /**
@@ -148,7 +162,7 @@ public class CalculadoraRtcClient {
     private CalculoRtcResponse calcularLocalOffline(OperacaoRtcRequest operacao) {
         CalculoRtcResponse resp = new CalculoRtcResponse();
         resp.setIdOperacao(operacao.getIdOperacao() != null ? operacao.getIdOperacao() : UUID.randomUUID().toString());
-        resp.setStatusGeral("PROCESSADO_LOCAL");
+        resp.setStatusGeral("CALCULO_LOCAL_NAO_OFICIAL");
 
         List<CalculoItemRtcResponse> itensCalculados = new ArrayList<>();
 

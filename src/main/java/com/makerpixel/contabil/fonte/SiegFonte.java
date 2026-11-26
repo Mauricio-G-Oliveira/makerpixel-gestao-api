@@ -30,6 +30,9 @@ public class SiegFonte implements FonteDocumentos {
     private final SiegConfigRepository siegConfigRepository;
     private final CofreCryptoService cofreCryptoService;
 
+    @org.springframework.beans.factory.annotation.Value("${sieg.habilitada:false}")
+    private boolean siegHabilitada;
+
     public SiegFonte(SiegConfigRepository siegConfigRepository, CofreCryptoService cofreCryptoService) {
         this.siegConfigRepository = siegConfigRepository;
         this.cofreCryptoService = cofreCryptoService;
@@ -49,6 +52,13 @@ public class SiegFonte implements FonteDocumentos {
         }
 
         SiegConfig config = optConfig.get();
+
+        if (!siegHabilitada) {
+            log.info("SIEG: Coleta ignorada — integração aguardando documentação oficial da API (escritorioId: {}).", escritorioId);
+            atualizarStatusSieg(config, "EM_PREPARACAO", "Aguardando documentação oficial da API SIEG.");
+            return Collections.emptyList();
+        }
+
         try {
             String apiKey = cofreCryptoService.decifrarTexto(config.getApiKeyCifrada(), config.getIvDados());
             if (apiKey == null || apiKey.isBlank()) {
@@ -60,8 +70,8 @@ public class SiegFonte implements FonteDocumentos {
             // Registro incremental da busca
             OffsetDateTime agora = OffsetDateTime.now();
             config.setUltimaBusca(agora);
-            config.setUltimoStatus("OK");
-            config.setUltimoErro(null);
+            config.setUltimoStatus("EM_PREPARACAO");
+            config.setUltimoErro("Integração em homologação: aguardando documentação oficial.");
             siegConfigRepository.save(config);
 
             log.info("Coleta SIEG executada com sucesso para empresa: {} (escritorioId: {})",

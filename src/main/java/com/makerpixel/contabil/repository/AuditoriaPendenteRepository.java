@@ -31,4 +31,14 @@ public interface AuditoriaPendenteRepository extends JpaRepository<AuditoriaPend
             @Param("empresaId") UUID empresaId,
             @Param("competencia") String competencia
     );
+
+    @org.springframework.data.jpa.repository.Modifying
+    @Query(value = "UPDATE auditoria_pendente SET status = 'PENDENTE', atualizado_em = NOW() WHERE status = 'PROCESSANDO' AND atualizado_em < :limiteTempo", nativeQuery = true)
+    int resetarPendenciasTravadas(@Param("limiteTempo") OffsetDateTime limiteTempo);
+
+    @Query(value = "SELECT * FROM auditoria_pendente WHERE status = 'PENDENTE' AND (proxima_tentativa IS NULL OR proxima_tentativa <= :agora) ORDER BY proxima_tentativa ASC NULLS FIRST LIMIT :limite FOR UPDATE SKIP LOCKED", nativeQuery = true)
+    List<AuditoriaPendente> findPendentesParaProcessarComLock(@Param("agora") OffsetDateTime agora, @Param("limite") int limite);
+
+    @Query(value = "SELECT * FROM auditoria_pendente WHERE escritorio_id = :escritorioId AND status = 'PENDENTE' AND (proxima_tentativa IS NULL OR proxima_tentativa <= :agora) ORDER BY proxima_tentativa ASC NULLS FIRST LIMIT :limite FOR UPDATE SKIP LOCKED", nativeQuery = true)
+    List<AuditoriaPendente> findPendentesPorEscritorioComLock(@Param("escritorioId") UUID escritorioId, @Param("agora") OffsetDateTime agora, @Param("limite") int limite);
 }

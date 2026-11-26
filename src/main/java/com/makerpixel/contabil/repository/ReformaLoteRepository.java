@@ -23,4 +23,10 @@ public interface ReformaLoteRepository extends JpaRepository<ReformaLote, UUID> 
             UUID escritorioId, UUID empresaId, String competencia, String origem);
 
     List<ReformaLote> findByEscritorioIdAndCompetenciaAndOrigem(UUID escritorioId, String competencia, String origem);
+
+    @org.springframework.data.jpa.repository.Query("SELECT COALESCE(SUM(l.totalNotas), 0) FROM ReformaLote l WHERE l.escritorioId = :escritorioId AND l.competencia = :competencia")
+    long sumTotalNotasPorCompetencia(
+            @org.springframework.data.repository.query.Param("escritorioId") UUID escritorioId,
+            @org.springframework.data.repository.query.Param("competencia") String competencia
+    );
 }

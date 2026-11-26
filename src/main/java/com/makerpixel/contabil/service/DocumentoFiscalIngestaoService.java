@@ -63,8 +63,8 @@ public class DocumentoFiscalIngestaoService {
 
             if (dto.storagePath() != null && !dto.storagePath().isBlank()) {
                 doc.setStoragePath(dto.storagePath());
-            }
-            if (dto.conteudoXml() != null && !dto.conteudoXml().isBlank()) {
+                doc.setConteudoXml(null); // Economia de espaço: XML armazenado exclusivamente no storage privado
+            } else if (dto.conteudoXml() != null && !dto.conteudoXml().isBlank() && (doc.getStoragePath() == null || doc.getStoragePath().isBlank())) {
                 doc.setConteudoXml(dto.conteudoXml());
             }
             doc.setAtualizadoEm(OffsetDateTime.now());
@@ -89,7 +89,12 @@ public class DocumentoFiscalIngestaoService {
             doc.setMotivoCancelamento(dto.motivoCancelamento());
             doc.adicionarFonte(dto.fonteOrigem());
             doc.setStoragePath(dto.storagePath());
-            doc.setConteudoXml(dto.conteudoXml());
+            // XML armazenado exclusivamente no storage privado Supabase; conteudo_xml fica NULL para economia no PostgreSQL
+            if (dto.storagePath() != null && !dto.storagePath().isBlank()) {
+                doc.setConteudoXml(null);
+            } else {
+                doc.setConteudoXml(dto.conteudoXml());
+            }
             doc.setRecebidoEm(OffsetDateTime.now());
             doc.setCriadoEm(OffsetDateTime.now());
             doc.setAtualizadoEm(OffsetDateTime.now());

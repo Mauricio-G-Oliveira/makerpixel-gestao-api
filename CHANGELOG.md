@@ -4,6 +4,36 @@ Todas as modificações e melhorias relevantes da API são registradas neste doc
 
 ---
 
+## [4.1.1] - 2026-11-26
+
+### 🛡️ Central Contábil API v4.1.1: Correções Pré-Deploy, Resiliência RTC e Segurança
+
+#### Segurança Crítica de Endpoints Internos
+- **Fail-Closed nos Agendamentos Cron:** Endpoints `/interno/*` rejeitam requisições sem segredo com HTTP 401. Remoção de autenticação via query param (`?secret=`), aceitando exclusivamente cabeçalho `X-Notasync-Cron-Secret`.
+- **Comparação em Tempo Constante:** Utilização de `MessageDigest.isEqual` para prevenção contra timing attacks na validação do segredo.
+- **Auditoria de Startup:** Verificação automática da configuração de `NOTASYNC_CRON_SECRET` com log de alerta seguro em produção sem expor o segredo.
+
+#### Resiliência da Calculadora RTC
+- **Tratamento de Indisponibilidade:** Implementação de `CalculadoraRtcIndisponivelException` e status `OFFLINE` quando a calculadora oficial não responder e `rtc.fallback-local=false`.
+- **Eliminação de Versão Fictícia:** Migration Flyway V12 (`V12__remover_default_versao_calculadora.sql`) removendo defaults estáticos das tabelas `reforma_lote` e `reforma_item`.
+
+#### Concorrência e Transação Atômica do Worker
+- **Fila Concorrente com `SKIP LOCKED`:** Busca de pendências utilizando `SELECT ... FOR UPDATE SKIP LOCKED` e transição imediata para `PROCESSANDO`.
+- **Transação Curta por Documento:** Remoção de `@Transactional` global; chamadas HTTP à Calculadora RTC executadas estritamente fora da transação de banco. Persistência de resultados em transação isolada (`REQUIRES_NEW`).
+- **Limpeza de Pendências Travadas:** Mecanismo automático de reset para `PENDENTE` de itens em `PROCESSANDO` há mais de 15 minutos.
+- **Lock Distribuído na Ação Manual:** `pg_try_advisory_lock` no botão "Conferir pendentes agora" por escritório, retornando HTTP 409 em concorrência.
+- **Controle de Limites do Plano:** Respeito aos limites mensais de auditoria contratados (1.000 / 5.000 / 20.000 notas).
+
+#### Transparência da Integração SIEG
+- **Feature Flag `sieg.habilitada`:** Desativada por padrão (`false`).
+- **Status Honesto:** Registro de status `EM_PREPARACAO` no cofre, sem testes de conexão fictícios enquanto aguarda documentação oficial.
+
+#### Isolamento e Storage
+- **XML Exclusivo no Storage Privado:** Coluna `conteudo_xml` mantida nula para economizar volume no PostgreSQL ao salvar no storage Supabase.
+- **Documentação de RLS:** Criação de `AUDITORIA_RLS.md` detalhando honestamente o isolamento multi-tenant atual e o roadmap v4.2.
+
+---
+
 ## [4.1.0] - 2026-11-25
 
 ### 🚀 Central Contábil API v4.1: Auditoria Contínua & Hub de Fontes de Documentos

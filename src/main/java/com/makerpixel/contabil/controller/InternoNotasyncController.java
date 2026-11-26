@@ -21,11 +21,9 @@ public class InternoNotasyncController {
      */
     @PostMapping("/rodar")
     public ResponseEntity<CronExecucaoResponse> rodarRobo(
-            @RequestHeader(value = "X-Notasync-Cron-Secret", required = false) String cronHeader,
-            @RequestParam(value = "secret", required = false) String cronParam
+            @RequestHeader(value = "X-Notasync-Cron-Secret", required = false) String cronHeader
     ) {
-        String secret = (cronHeader != null && !cronHeader.isBlank()) ? cronHeader : cronParam;
-        CronExecucaoResponse resultado = workerService.executarCicloRobo(secret);
+        CronExecucaoResponse resultado = workerService.executarCicloRobo(cronHeader);
         return ResponseEntity.ok(resultado);
     }
 }

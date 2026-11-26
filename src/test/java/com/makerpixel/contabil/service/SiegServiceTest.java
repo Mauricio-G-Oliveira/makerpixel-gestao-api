@@ -28,7 +28,7 @@ public class SiegServiceTest {
     }
 
     @Test
-    @DisplayName("SIEG: salvar chave criptografa no cofre AES-256-GCM e retorna apenas últimos 4 caracteres")
+    @DisplayName("SIEG: salvar chave criptografa no cofre AES-256-GCM com status honesto EM_PREPARACAO")
     void testSalvarChaveSiegCriptografada() {
         UUID escritorioId = UUID.randomUUID();
         String apiKey = "sieg_live_secret_key_9876";
@@ -47,6 +47,7 @@ public class SiegServiceTest {
 
         assertTrue(resp.configurada());
         assertEquals("9876", resp.ultimosQuatro());
+        assertEquals("EM_PREPARACAO", resp.ultimoStatus());
         verify(cofreCryptoService, times(1)).cifrarTexto(apiKey);
         verify(siegConfigRepository, times(1)).save(any(SiegConfig.class));
     }
@@ -58,7 +59,7 @@ public class SiegServiceTest {
         SiegConfig cfg = new SiegConfig();
         cfg.setEscritorioId(escritorioId);
         cfg.setUltimosQuatro("4321");
-        cfg.setUltimoStatus("CONEXAO_OK");
+        cfg.setUltimoStatus("EM_PREPARACAO");
         cfg.setAtivo(true);
 
         when(siegConfigRepository.findByEscritorioId(escritorioId)).thenReturn(Optional.of(cfg));
@@ -67,13 +68,13 @@ public class SiegServiceTest {
 
         assertTrue(resp.configurada());
         assertEquals("4321", resp.ultimosQuatro());
-        assertEquals("CONEXAO_OK", resp.ultimoStatus());
+        assertEquals("EM_PREPARACAO", resp.ultimoStatus());
         verify(cofreCryptoService, never()).decifrarTexto(any(), any());
     }
 
     @Test
-    @DisplayName("SIEG: testar conexão com credencial do cofre")
-    void testTestarConexaoSieg() {
+    @DisplayName("SIEG Honesta: testar conexão retorna status EM_PREPARACAO e nunca finge sucesso")
+    void testTestarConexaoSiegHonesta() {
         UUID escritorioId = UUID.randomUUID();
         SiegConfig cfg = new SiegConfig();
         cfg.setEscritorioId(escritorioId);
@@ -86,7 +87,8 @@ public class SiegServiceTest {
 
         var resp = siegService.testarConexao(escritorioId);
 
-        assertTrue(resp.sucesso());
-        assertTrue(resp.mensagem().contains("sucesso"));
+        assertFalse(resp.sucesso());
+        assertTrue(resp.mensagem().contains("preparação"));
+        assertEquals("EM_PREPARACAO", cfg.getUltimoStatus());
     }
 }

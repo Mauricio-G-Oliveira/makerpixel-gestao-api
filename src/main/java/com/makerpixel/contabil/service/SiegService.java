@@ -24,6 +24,9 @@ public class SiegService {
     private final SiegConfigRepository siegConfigRepository;
     private final CofreCryptoService cofreCryptoService;
 
+    @org.springframework.beans.factory.annotation.Value("${sieg.habilitada:false}")
+    private boolean siegHabilitada;
+
     public SiegService(SiegConfigRepository siegConfigRepository, CofreCryptoService cofreCryptoService) {
         this.siegConfigRepository = siegConfigRepository;
         this.cofreCryptoService = cofreCryptoService;
@@ -84,13 +87,13 @@ public class SiegService {
         cfg.setIvDados(enc.iv());
         cfg.setUltimosQuatro(ultimos4);
         cfg.setAtivo(true);
-        cfg.setUltimoStatus("CONFIGURADA");
-        cfg.setUltimoErro(null);
+        cfg.setUltimoStatus("EM_PREPARACAO");
+        cfg.setUltimoErro("Integração em fase de homologação: aguardando documentação oficial da API SIEG.");
         cfg.setAtualizadoEm(OffsetDateTime.now());
 
         siegConfigRepository.save(cfg);
 
-        log.info("Chave de API da SIEG criptografada e salva no cofre para escritorioId: {} (final: ****{})",
+        log.info("Chave de API da SIEG criptografada e salva no cofre para escritorioId: {} (final: ****{}). Status: EM_PREPARACAO.",
                 escritorioId, ultimos4);
 
         return obterConfiguracao(escritorioId);
@@ -106,20 +109,17 @@ public class SiegService {
             throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Falha ao decifrar a credencial do cofre.");
         }
 
-        // Simulação/Validação do cliente SIEG (logs estritamente sem credencial)
-        boolean sucesso = chave.length() >= 8;
         OffsetDateTime agora = OffsetDateTime.now();
-
         cfg.setUltimaBusca(agora);
-        cfg.setUltimoStatus(sucesso ? "CONEXAO_OK" : "ERRO_AUTENTICACAO");
-        cfg.setUltimoErro(sucesso ? null : "Credencial rejeitada na autenticação da SIEG.");
+        cfg.setUltimoStatus("EM_PREPARACAO");
+        cfg.setUltimoErro("Integração SIEG em preparação: aguardando documentação oficial da API.");
         siegConfigRepository.save(cfg);
 
-        log.info("Teste de conexão SIEG executado para escritorioId: {} com resultado: {}", escritorioId, cfg.getUltimoStatus());
+        log.info("Teste de conexão SIEG para escritorioId: {} informado como EM_PREPARACAO (sem chamadas fictícias).", escritorioId);
 
         return new TesteConexaoResponse(
-                sucesso,
-                sucesso ? "Conexão com a API da SIEG autenticada com sucesso." : "Falha na autenticação da chave SIEG.",
+                false,
+                "Integração SIEG em preparação: aguardando documentação oficial da API.",
                 agora.format(FMT_DATA)
         );
     }

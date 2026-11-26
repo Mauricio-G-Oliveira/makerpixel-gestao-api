@@ -10,7 +10,7 @@
 	</parent>
 	<groupId>com.makerpixel</groupId>
 	<artifactId>makerpixel-gestao-api</artifactId>
-	<version>1.0.0</version>
+	<version>4.1.1</version>
 	<name>makerpixel-gestao-api</name>
 	<description>MakerPixel Gestão API - Backend Spring Boot 3 para Escritórios de Contabilidade</description>
 
